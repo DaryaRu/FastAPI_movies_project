@@ -17,7 +17,7 @@ async def wait_for_redis() -> None:
         if await client.ping():
             break
         await asyncio.sleep(1)
-    await client.close()
+    await client.aclose()
 
 
 if __name__ == "__main__":
