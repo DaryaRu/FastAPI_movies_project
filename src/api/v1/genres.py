@@ -39,7 +39,7 @@ async def genre_list(
 
 
 @router.get(
-    "/{genre_uuid}/", response_model=Genre, summary="Получить жанр по UUID"
+    "/{genre_uuid}", response_model=Genre, summary="Получить жанр по UUID"
 )
 @cache(expire=config.CACHE_EXPIRE)
 async def genre_details(
