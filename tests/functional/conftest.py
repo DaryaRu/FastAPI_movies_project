@@ -1,23 +1,12 @@
 """Fixtures for functional tests."""
 
-import asyncio
-
 import httpx
-import pytest
 import pytest_asyncio
 from elasticsearch import AsyncElasticsearch
 from redis.asyncio import Redis
 
 from functional.settings import test_settings
 from functional.utils.helpers import create_index, delete_index, load_data
-
-
-@pytest.fixture(scope="session")
-def event_loop():
-    """Session-scoped event loop."""
-    loop = asyncio.new_event_loop()
-    yield loop
-    loop.close()
 
 
 @pytest_asyncio.fixture(scope="session")
