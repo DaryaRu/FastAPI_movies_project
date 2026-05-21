@@ -7,7 +7,7 @@ fetching person details, and retrieving films associated with a person.
 from http import HTTPStatus
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi_cache.decorator import cache
 
 from api.v1.dependencies import PaginationDepend
@@ -23,12 +23,18 @@ router = APIRouter()
     "/search",
     response_model=list[Person],
     summary="Полнотекстовый поиск по персонам",
+    description=(
+        "Полнотекстовый поиск по именам (актеров, режиссеров, сценаристов). "
+        "Используйте параметры page_number для выбора страницы и "
+        "page_size для ограничения количества элементов."
+    ),
+    response_description="Список найденных персон с их данными по фильмам",
 )
 @cache(expire=config.CACHE_EXPIRE)
 async def person_search(
     pagination: PaginationDepend,
     person_service: PersonService = Depends(get_person_service),
-    query: str = Query(..., description="Имя для поиска"),
+    query: str = Query(..., description="Имя или часть имени для поиска"),
 ) -> list[Person]:
     """Perform a full-text search for persons by name."""
     return await person_service.get_list(
@@ -42,10 +48,25 @@ async def person_search(
     "/{person_uuid}/",
     response_model=Person,
     summary="Получить персону по UUID",
+    description=(
+        "Получить детальную информацию о конкретной "
+        "персоне по ее уникальному идентификатору (UUID)."
+    ),
+    response_description=(
+        "Детальная информация о персоне, включая ее имя и данные по фильму"
+    ),
+    responses={
+        HTTPStatus.NOT_FOUND: {
+            "description": "Персона с таким UUID не найдена"
+        }
+    },
 )
 @cache(expire=config.CACHE_EXPIRE)
 async def person_details(
-    person_uuid: UUID,
+    person_uuid: UUID = Path(
+        ...,
+        description="Уникальный идентификатор персоны (UUID)",
+    ),
     person_service: PersonService = Depends(get_person_service),
 ) -> Person:
     """Get detailed information for a specific person by their UUID."""
@@ -61,11 +82,21 @@ async def person_details(
     "/{person_uuid}/film/",
     response_model=list[FilmShort],
     summary="Получить все фильмы заданной персоны",
+    description=(
+        "Получить список всех кинопроизведений, "
+        "в создании которых принимала участие данная персона. "
+        "Используйте параметры page_number для выбора страницы и "
+        "page_size для ограничения количества элементов."
+    ),
+    response_description="Список фильмов с их названиями и рейтингами",
 )
 @cache(expire=config.CACHE_EXPIRE)
 async def person_films(
-    person_uuid: UUID,
     pagination: PaginationDepend,
+    person_uuid: UUID = Path(
+        ...,
+        description="Уникальный идентификатор персоны (UUID)",
+    ),
     person_service: PersonService = Depends(get_person_service),
 ) -> list[FilmShort]:
     """Get all films associated with a specific person."""
@@ -82,7 +113,15 @@ async def person_films(
 
 
 @router.get(
-    "/", response_model=list[Person], summary="Получить список всех персон"
+    "/",
+    response_model=list[Person],
+    summary="Получить список всех персон",
+    description=(
+        "Получить полный список персон с пагинацией. "
+        "Используйте параметры page_number для выбора страницы и "
+        "page_size для ограничения количества элементов."
+    ),
+    response_description="Список всех персон в системе",
 )
 @cache(expire=config.CACHE_EXPIRE)
 async def person_list(
