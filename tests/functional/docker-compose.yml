@@ -43,6 +43,8 @@ services:
   tests:
     image: fastapi-image
     env_file: .env
+    volumes:
+      - ../../tests:/app/tests
     depends_on:
       fastapi:
         condition: service_healthy
@@ -51,4 +53,4 @@ services:
     entrypoint: >
       sh -c "python3 /app/tests/functional/utils/wait_for_es.py
       && python3 /app/tests/functional/utils/wait_for_redis.py
-      && pytest /app/tests/functional/src --asyncio-mode=auto -v"
+      && pytest /app/tests/functional/src -c /app/tests/functional/pytest.ini -v"
