@@ -19,6 +19,8 @@ async def genre_data(es_write_data):
     )
 
 
+GENRES_URL = f"{test_settings.api_prefix}/genres"
+
 GENRE_ID = GENRES_DATA[0]["id"]
 UNKNOWN_ID = "00000000-0000-0000-0000-000000000000"
 
@@ -50,7 +52,7 @@ class TestGenreDetail:
         expected_answer: dict,
     ):
         response = await http_client.get(
-            f"/api/v1/genres/{query_data['genre_id']}"
+            f"{GENRES_URL}/{query_data['genre_id']}"
         )
         assert response.status == expected_answer["status"]
         if response.status == 200:
@@ -76,7 +78,7 @@ class TestGenreDetailValidation:
         query_data: str,
         expected_answer: int,
     ):
-        response = await http_client.get(f"/api/v1/genres/{query_data}")
+        response = await http_client.get(f"{GENRES_URL}/{query_data}")
         assert response.status == expected_answer
 
 
@@ -84,11 +86,11 @@ class TestGenreList:
     """Tests for GET /api/v1/genres/."""
 
     async def test_returns_200(self, http_client: ClientSession):
-        response = await http_client.get("/api/v1/genres/")
+        response = await http_client.get(GENRES_URL)
         assert response.status == 200
 
     async def test_returns_all_genres(self, http_client: ClientSession):
-        response = await http_client.get("/api/v1/genres/")
+        response = await http_client.get(GENRES_URL)
         data = await response.json()
         assert isinstance(data, list)
         assert len(data) == len(GENRES_DATA)
@@ -96,7 +98,7 @@ class TestGenreList:
     async def test_response_has_required_fields(
         self, http_client: ClientSession
     ):
-        response = await http_client.get("/api/v1/genres/")
+        response = await http_client.get(GENRES_URL)
         data = await response.json()
         genre = data[0]
         assert "uuid" in genre
@@ -125,7 +127,7 @@ class TestGenreListSorting:
         query_data: dict,
         expected: list,
     ):
-        response = await http_client.get("/api/v1/genres/", params=query_data)
+        response = await http_client.get(GENRES_URL, params=query_data)
         assert response.status == 200
         data = await response.json()
         names = [g["name"] for g in data]
@@ -136,7 +138,7 @@ class TestGenreListSorting:
         self, http_client: ClientSession, sort: str
     ):
         response = await http_client.get(
-            "/api/v1/genres/", params={"sort": sort}
+            GENRES_URL, params={"sort": sort}
         )
         assert response.status == 422
 
@@ -147,8 +149,8 @@ class TestGenreCache:
     @pytest.mark.parametrize(
         "url",
         [
-            f"/api/v1/genres/{GENRE_ID}",
-            "/api/v1/genres/",
+            f"{GENRES_URL}/{GENRE_ID}",
+            GENRES_URL,
         ],
     )
     async def test_repeated_request_responses_cache(
@@ -167,10 +169,10 @@ class TestGenreCache:
         self, http_client: ClientSession
     ):
         response_sorted_asc = await http_client.get(
-            "/api/v1/genres/", params={"sort": "name"}
+            GENRES_URL, params={"sort": "name"}
         )
         response_sorted_desc = await http_client.get(
-            "/api/v1/genres/", params={"sort": "-name"}
+            GENRES_URL, params={"sort": "-name"}
         )
         assert (
             await response_sorted_asc.json()
@@ -179,10 +181,10 @@ class TestGenreCache:
 
     async def test_different_pages_cache(self, http_client: ClientSession):
         response_first_page = await http_client.get(
-            "/api/v1/genres/", params={"page_size": 1, "page_number": 1}
+            GENRES_URL, params={"page_size": 1, "page_number": 1}
         )
         response_second_page = await http_client.get(
-            "/api/v1/genres/", params={"page_size": 1, "page_number": 2}
+            GENRES_URL, params={"page_size": 1, "page_number": 2}
         )
         assert (
             await response_first_page.json()

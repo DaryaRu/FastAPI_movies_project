@@ -25,6 +25,7 @@ class TestSettings(BaseSettings):
     redis_port: int = Field(default=6379, alias="REDIS_PORT")
 
     api_url: str = Field(default="http://localhost:7000", alias="API_URL")
+    api_prefix: str = Field(default="/api/v1", alias="API_PREFIX")
 
 
 test_settings = TestSettings()
