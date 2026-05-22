@@ -11,9 +11,15 @@ class TestSettings(BaseSettings):
 
     elastic_host: str = Field(alias="ELASTIC_HOST")
     elastic_port: int = Field(default=9200, alias="ELASTIC_PORT")
-    elastic_movies_index: str = Field(default="movies", alias="ELASTIC_FILM_INDEX")
-    elastic_genres_index: str = Field(default="genres", alias="ELASTIC_GENRE_INDEX")
-    elastic_persons_index: str = Field(default="persons", alias="ELASTIC_PERSON_INDEX")
+    elastic_movies_index: str = Field(
+        default="movies", alias="ELASTIC_FILM_INDEX"
+    )
+    elastic_genres_index: str = Field(
+        default="genres", alias="ELASTIC_GENRE_INDEX"
+    )
+    elastic_persons_index: str = Field(
+        default="persons", alias="ELASTIC_PERSON_INDEX"
+    )
 
     redis_host: str = Field(alias="REDIS_HOST")
     redis_port: int = Field(default=6379, alias="REDIS_PORT")

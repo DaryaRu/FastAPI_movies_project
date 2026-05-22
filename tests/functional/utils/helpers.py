@@ -8,7 +8,9 @@ from elasticsearch.helpers import async_bulk
 logger = logging.getLogger(__name__)
 
 
-async def create_index(es_client: AsyncElasticsearch, index: str, schema: dict) -> None:
+async def create_index(
+    es_client: AsyncElasticsearch, index: str, schema: dict
+) -> None:
     """Create ES index (if does not exist)."""
     try:
         await es_client.indices.create(
@@ -39,7 +41,10 @@ async def load_data(
     )
     if errors:
         logger.error(
-            "Failed to index %d documents into '%s': %s", len(errors), index, errors
+            "Failed to index %d documents into '%s': %s",
+            len(errors), index, errors,
         )
     else:
-        logger.info("Successfully indexed %d documents into '%s'", updated, index)
+        logger.info(
+            "Successfully indexed %d documents into '%s'", updated, index
+        )

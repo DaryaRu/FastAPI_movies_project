@@ -9,9 +9,10 @@ from functional.settings import test_settings
 
 async def wait_for_es() -> None:
     """Ping ES in until it responds."""
-    client = AsyncElasticsearch(
-        hosts=[f"http://{test_settings.elastic_host}:{test_settings.elastic_port}"]
+    host = (
+        f"http://{test_settings.elastic_host}:{test_settings.elastic_port}"
     )
+    client = AsyncElasticsearch(hosts=[host])
     while True:
         if await client.ping():
             break
