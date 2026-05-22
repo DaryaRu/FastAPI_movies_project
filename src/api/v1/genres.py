@@ -5,6 +5,7 @@ and fetching specific genre details by unique identifier.
 """
 
 from http import HTTPStatus
+from typing import Literal
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -25,7 +26,7 @@ router = APIRouter()
 async def genre_list(
     pagination: PaginationDepend,
     genre_service: GenreService = Depends(get_genre_service),
-    sort: str | None = Query(
+    sort: Literal["name", "-name"] | None = Query(
         None,
         description="Сортировка по имени по алфавиту (name и -name)",
     ),
