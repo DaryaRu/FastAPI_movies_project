@@ -45,12 +45,11 @@ services:
     env_file: .env
     volumes:
       - ../../tests:/app/tests
+    ports:
+      - "5678:5678"
     depends_on:
       fastapi:
         condition: service_healthy
       elasticsearch:
         condition: service_healthy
-    entrypoint: >
-      sh -c "python3 /app/tests/functional/utils/wait_for_es.py
-      && python3 /app/tests/functional/utils/wait_for_redis.py
-      && pytest /app/tests/functional/src -c /app/tests/functional/pytest.ini -v"
+    entrypoint: sh /app/tests/functional/utils/entrypoint.sh

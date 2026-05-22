@@ -4,3 +4,4 @@ httpx==0.28.1
 elasticsearch[async]==8.13.2
 pydantic-settings==2.14.1
 redis==7.4.0
+debugpy==1.8.20
