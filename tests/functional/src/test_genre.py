@@ -111,3 +111,42 @@ class TestGenreListSorting:
     async def test_invalid_sort_returns_422(self, http_client: AsyncClient, sort: str):
         response = await http_client.get("/api/v1/genres/", params={"sort": sort})
         assert response.status_code == 422
+
+
+class TestGenreCache:
+    """Tests Redis cache."""
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            f"/api/v1/genres/{GENRE_ID}",
+            "/api/v1/genres/",
+        ],
+    )
+    async def test_repeated_request_responses_cache(
+        self, http_client: AsyncClient, url: str
+    ):
+        response_from_es = await http_client.get(url)
+        response_from_cache = await http_client.get(url)
+        assert response_from_es.json() == response_from_cache.json()
+        assert float(response_from_cache.headers["X-Process-Time"]) < float(
+            response_from_es.headers["X-Process-Time"]
+        )
+
+    async def test_different_sort_params_cache(self, http_client: AsyncClient):
+        response_sorted_asc = await http_client.get(
+            "/api/v1/genres/", params={"sort": "name"}
+        )
+        response_sorted_desc = await http_client.get(
+            "/api/v1/genres/", params={"sort": "-name"}
+        )
+        assert response_sorted_asc.json() != response_sorted_desc.json()
+
+    async def test_different_pages_cache(self, http_client: AsyncClient):
+        response_first_page = await http_client.get(
+            "/api/v1/genres/", params={"page_size": 1, "page_number": 1}
+        )
+        response_second_page = await http_client.get(
+            "/api/v1/genres/", params={"page_size": 1, "page_number": 2}
+        )
+        assert response_first_page.json() != response_second_page.json()
