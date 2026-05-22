@@ -27,6 +27,12 @@ async def redis_client():
     await client.aclose()
 
 
+@pytest_asyncio.fixture(autouse=True)
+async def flush_cache(redis_client: Redis):
+    """Flushe Redis cache before each test."""
+    await redis_client.flushdb()
+
+
 @pytest_asyncio.fixture
 async def http_client():
     """Function-scoped httpx async client."""
