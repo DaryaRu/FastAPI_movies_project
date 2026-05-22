@@ -1,6 +1,6 @@
 """Fixtures for functional tests."""
 
-import httpx
+import aiohttp
 import pytest_asyncio
 from elasticsearch import AsyncElasticsearch
 from redis.asyncio import Redis
@@ -12,9 +12,10 @@ from functional.utils.helpers import create_index, delete_index, load_data
 @pytest_asyncio.fixture(scope="session")
 async def es_client():
     """Session-scoped Elasticsearch async client."""
-    client = AsyncElasticsearch(
-        hosts=[f"http://{test_settings.elastic_host}:{test_settings.elastic_port}"]
+    host = (
+        f"http://{test_settings.elastic_host}:{test_settings.elastic_port}"
     )
+    client = AsyncElasticsearch(hosts=[host])
     yield client
     await client.close()
 
@@ -22,7 +23,9 @@ async def es_client():
 @pytest_asyncio.fixture(scope="session")
 async def redis_client():
     """Session-scoped Redis async client."""
-    client = Redis(host=test_settings.redis_host, port=test_settings.redis_port)
+    client = Redis(
+        host=test_settings.redis_host, port=test_settings.redis_port
+    )
     yield client
     await client.aclose()
 
@@ -33,14 +36,13 @@ async def flush_cache(redis_client: Redis):
     await redis_client.flushdb()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="function")
 async def http_client():
-    """Function-scoped httpx async client."""
-    limits = httpx.Limits(max_keepalive_connections=0)
-    async with httpx.AsyncClient(
-        base_url=test_settings.api_url, limits=limits
-    ) as client:
-        yield client
+    """Function-scoped aiohttp client session."""
+    async with aiohttp.ClientSession(
+        base_url=test_settings.api_url
+    ) as session:
+        yield session
 
 
 @pytest_asyncio.fixture(scope="session")
