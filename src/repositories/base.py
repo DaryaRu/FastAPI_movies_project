@@ -1,6 +1,6 @@
 """Base Elasticsearch repository."""
 
-from elasticsearch import AsyncElasticsearch, NotFoundError
+from elasticsearch import AsyncElasticsearch, BadRequestError, NotFoundError
 
 from exceptions import ObjectNotFoundException
 
@@ -50,9 +50,12 @@ class BaseElasticRepository:
         if sort:
             body["sort"] = [sort]
 
-        result = await self.elastic_client.search(
-            index=self.index,
-            body=body,
-        )
+        try:
+            result = await self.elastic_client.search(
+                index=self.index,
+                body=body,
+            )
+        except (BadRequestError, NotFoundError):
+            return []
 
         return [hit["_source"] for hit in result["hits"]["hits"]]
