@@ -126,3 +126,45 @@ etl/
 ### Запуск индексов при старте
 
 При запуске `main.py` проверяет наличие всех трёх индексов в Elasticsearch и создаёт отсутствующие с нужной схемой.
+
+
+## Тесты
+
+Функциональные тесты находятся в `tests/functional/`.
+
+### Подготовка (один раз)
+
+```bash
+cd tests/functional && docker compose build
+```
+
+### Запуск инфраструктуры
+
+```bash
+docker compose up -d elasticsearch redis fastapi
+```
+
+### Без дебаггера
+
+```bash
+docker compose run --rm tests
+```
+
+При изменении тестов пересборка образа не нужна — директория `tests/` примонтирована как volume и изменения подхватываются при следующем запуске.
+
+### С дебаггером (VS Code)
+
+**1.** Запустить тесты в режиме ожидания:
+```bash
+docker compose run --rm --service-ports -e DEBUG=1 tests
+```
+
+**2.** Поставить брейкпойнт в тесте.
+
+**3.** Подключиться к `localhost:5678` через debugpy в своей IDE.
+
+### Остановить инфраструктуру
+
+```bash
+docker compose down
+```
