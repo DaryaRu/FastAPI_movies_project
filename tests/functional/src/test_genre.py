@@ -137,9 +137,7 @@ class TestGenreListSorting:
     async def test_invalid_sort_returns_422(
         self, http_client: ClientSession, sort: str
     ):
-        response = await http_client.get(
-            GENRES_URL, params={"sort": sort}
-        )
+        response = await http_client.get(GENRES_URL, params={"sort": sort})
         assert response.status == 422
 
 
@@ -190,3 +188,52 @@ class TestGenreCache:
             await response_first_page.json()
             != await response_second_page.json()
         )
+
+
+class TestGenreListPaginationValidation:
+    """Tests for pagination query parameters."""
+
+    @pytest.mark.parametrize(
+        "query_data,expected_answer",
+        [
+            ({"page_number": 0}, 422),
+            ({"page_number": -1}, 422),
+            ({"page_number": -100}, 422),
+            ({"page_size": 0}, 422),
+            ({"page_size": -1}, 422),
+            ({"page_size": 101}, 422),
+            ({"page_size": 1000}, 422),
+            ({"page_number": "abc"}, 422),
+        ],
+    )
+    async def test_invalid_pagination_returns_422(
+        self,
+        http_client: ClientSession,
+        query_data: dict,
+        expected_answer: int,
+    ):
+        response = await http_client.get(GENRES_URL, params=query_data)
+        assert response.status == expected_answer
+
+    @pytest.mark.parametrize(
+        "query_data,expected_answer",
+        [
+            ({"page_size": 1}, {"status": 200, "count": 1}),
+            ({"page_size": 100}, {"status": 200}),
+            ({"page_number": 9999}, {"status": 200, "body": []}),
+        ],
+    )
+    async def test_valid_pagination_returns_200(
+        self,
+        http_client: ClientSession,
+        query_data: dict,
+        expected_answer: dict,
+    ):
+        response = await http_client.get(GENRES_URL, params=query_data)
+        assert response.status == expected_answer["status"]
+        if "count" in expected_answer or "body" in expected_answer:
+            data = await response.json()
+            if "count" in expected_answer:
+                assert len(data) == expected_answer["count"]
+            if "body" in expected_answer:
+                assert data == expected_answer["body"]
