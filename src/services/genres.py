@@ -9,13 +9,13 @@ from core import config
 from db.elastic import get_elastic
 from exceptions import ObjectNotFoundException
 from models.genres import Genre
-from repositories.genres import GenresRepository
+from repositories.genres import AbstractGenreRepository, GenresRepository
 
 
 class GenreService:
     """Service class for managing genre-related business logic."""
 
-    def __init__(self, repository: GenresRepository):
+    def __init__(self, repository: AbstractGenreRepository):
         """Initialize service with specialized genre repository."""
         self.genre_repo = repository
 

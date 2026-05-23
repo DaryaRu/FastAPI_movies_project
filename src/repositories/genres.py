@@ -1,9 +1,23 @@
 """Genres repository."""
 
+from abc import abstractmethod
+
 from repositories.base import BaseElasticRepository
 
 
-class GenresRepository(BaseElasticRepository):
+class AbstractGenreRepository(BaseElasticRepository):
+    """Abstract contract for genre repositories."""
+
+    @abstractmethod
+    async def get_sorted_genres(
+        self,
+        page_number: int,
+        page_size: int,
+        sort_str: str | None,
+    ) -> list[dict]: ...
+
+
+class GenresRepository(AbstractGenreRepository):
     """Elasticsearch repository for genre documents."""
 
     async def get_sorted_genres(

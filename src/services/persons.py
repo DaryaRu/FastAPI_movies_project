@@ -9,8 +9,8 @@ from core import config
 from db.elastic import get_elastic
 from exceptions import ObjectNotFoundException
 from models.persons import Person as PersonModel
-from repositories.films import FilmRepository
-from repositories.persons import PersonsRepository
+from repositories.films import AbstractFilmRepository, FilmRepository
+from repositories.persons import AbstractPersonRepository, PersonsRepository
 from schemas.film_shorts import FilmShortResponse as FilmShort
 
 
@@ -18,7 +18,9 @@ class PersonService:
     """Service class for managing person-related business logic."""
 
     def __init__(
-        self, person_repo: PersonsRepository, movie_repo: FilmRepository
+        self,
+        person_repo: AbstractPersonRepository,
+        movie_repo: AbstractFilmRepository,
     ):
         """Initialize service with specialized repositories."""
         self.person_repo = person_repo

@@ -10,11 +10,11 @@ from core import config
 from db.elastic import get_elastic
 from exceptions import ObjectNotFoundException
 from models.films import Film
-from repositories.films import FilmRepository
+from repositories.films import AbstractFilmRepository, FilmRepository
 
 
 class FilmService:
-    def __init__(self, repository: FilmRepository):
+    def __init__(self, repository: AbstractFilmRepository):
         """Initialize service with film repository."""
         self.repository = repository
 
