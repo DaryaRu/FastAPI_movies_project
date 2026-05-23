@@ -4,7 +4,7 @@ from http import HTTPStatus
 from typing import Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Path, Query
 from fastapi_cache.decorator import cache
 
 from api.v1.dependencies import PaginationDepend
@@ -27,7 +27,12 @@ router = APIRouter()
 async def films_search(
     pagination: PaginationDepend,
     film_service: FilmService = Depends(get_film_service),
-    query: str = Query(...),
+    query: str = Query(
+        ...,
+        description=(
+            "Текст поискового запроса (слово или часть названия фильма)"
+        ),
+    ),
 ) -> list[FilmShortResponse]:
     """Endpoint to search films by query string."""
     films = await film_service.search(
@@ -42,10 +47,16 @@ async def films_search(
     summary="Получить кинопроизведение по UUID",
     description="Возвращает полную информацию о кинопроизведении по UUID",
     response_description="Полная информация о фильме",
+    responses={
+        HTTPStatus.NOT_FOUND: {"description": "Фильм с таким UUID не найден"}
+    },
 )
 @cache(expire=config.CACHE_EXPIRE)
 async def film_details(
-    film_id: UUID,
+    film_id: UUID = Path(
+        ...,
+        description="Уникальный идентификатор фильма (UUID)",
+    ),
     film_service: FilmService = Depends(get_film_service),
 ) -> FilmResponse:
     """Endpoint to return full details for a single film by id."""
@@ -62,15 +73,30 @@ async def film_details(
     "/",
     response_model=list[FilmShortResponse],
     summary="Список кинопроизведений",
-    description="Список кинопроизведений с сортировкой и фильтром по жанру",
+    description=(
+        "Список кинопроизведений с сортировкой и фильтром по жанру. "
+        "Используйте параметры page_number для выбора страницы и "
+        "page_size для ограничения количества элементов."
+    ),
     response_description="Название и рейтинг фильма",
 )
 @cache(expire=config.CACHE_EXPIRE)
 async def films_list(
     pagination: PaginationDepend,
     film_service: FilmService = Depends(get_film_service),
-    sort: Optional[str] = Query(default=None),
-    genre: Optional[UUID] = Query(default=None, alias="filter[genre]"),
+    sort: Optional[str] = Query(
+        default=None,
+        description=(
+            "Поле для сортировки (например, imdb_rating и -imdb_rating). "
+            "Знак минус (-) "
+            "означает сортировку по убыванию."
+        ),
+    ),
+    genre: Optional[UUID] = Query(
+        default=None,
+        alias="filter[genre]",
+        description="UUID жанра для фильтрации списка фильмов",
+    ),
 ) -> list[FilmShortResponse]:
     """Endpoint to return a paginated list of films
     with sort and genre filter."""
