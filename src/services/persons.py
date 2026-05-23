@@ -2,15 +2,10 @@
 
 from uuid import UUID
 
-from elasticsearch import AsyncElasticsearch
-from fastapi import Depends
-
-from core import config
-from db.elastic import get_elastic
 from exceptions import ObjectNotFoundException
 from models.persons import Person as PersonModel
-from repositories.films import AbstractFilmRepository, FilmRepository
-from repositories.persons import AbstractPersonRepository, PersonsRepository
+from repositories.films import AbstractFilmRepository
+from repositories.persons import AbstractPersonRepository
 from schemas.film_shorts import FilmShortResponse as FilmShort
 
 
@@ -107,16 +102,3 @@ class PersonService:
                 source["uuid"] = actual_id
             result.append(FilmShort(**source))
         return result
-
-
-def get_person_service(
-    elastic: AsyncElasticsearch = Depends(get_elastic),
-) -> PersonService:
-    """Dependency provider for PersonService instantiation."""
-    person_repo = PersonsRepository(
-        elastic_client=elastic, index=config.ELASTIC_PERSON_INDEX
-    )
-    movie_repo = FilmRepository(
-        elastic_client=elastic, index=config.ELASTIC_FILM_INDEX
-    )
-    return PersonService(person_repo=person_repo, movie_repo=movie_repo)

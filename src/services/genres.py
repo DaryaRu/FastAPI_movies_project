@@ -2,14 +2,9 @@
 
 from uuid import UUID
 
-from elasticsearch import AsyncElasticsearch
-from fastapi import Depends
-
-from core import config
-from db.elastic import get_elastic
 from exceptions import ObjectNotFoundException
 from models.genres import Genre
-from repositories.genres import AbstractGenreRepository, GenresRepository
+from repositories.genres import AbstractGenreRepository
 
 
 class GenreService:
@@ -42,13 +37,3 @@ class GenreService:
             sort_str=sort,
         )
         return [Genre(**source) for source in docs_sources]
-
-
-def get_genre_service(
-    elastic: AsyncElasticsearch = Depends(get_elastic),
-) -> GenreService:
-    """Dependency provider for GenreService instantiation."""
-    repository = GenresRepository(
-        elastic_client=elastic, index=config.ELASTIC_GENRE_INDEX
-    )
-    return GenreService(repository)

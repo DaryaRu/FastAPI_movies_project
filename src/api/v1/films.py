@@ -11,7 +11,8 @@ from api.v1.dependencies import PaginationDepend
 from core import config
 from schemas.film_shorts import FilmShortResponse
 from schemas.films import FilmResponse
-from services.film import FilmService, get_film_service
+from dependencies import get_film_service
+from services.film import FilmService
 
 router = APIRouter()
 

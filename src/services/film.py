@@ -3,14 +3,9 @@
 from typing import Optional
 from uuid import UUID
 
-from elasticsearch import AsyncElasticsearch
-from fastapi import Depends
-
-from core import config
-from db.elastic import get_elastic
 from exceptions import ObjectNotFoundException
 from models.films import Film
-from repositories.films import AbstractFilmRepository, FilmRepository
+from repositories.films import AbstractFilmRepository
 
 
 class FilmService:
@@ -74,11 +69,3 @@ class FilmService:
     def _convert_to_films(self, data: list[dict]) -> list[Film]:
         """Convert a list of raw dicts to Film objects."""
         return [Film(**item) for item in data]
-
-
-def get_film_service(
-    elastic: AsyncElasticsearch = Depends(get_elastic),
-) -> FilmService:
-    """FastAPI dependency that returns a FilmService instance."""
-    repository = FilmRepository(elastic, index=config.ELASTIC_FILM_INDEX)
-    return FilmService(repository)

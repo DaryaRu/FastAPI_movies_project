@@ -14,7 +14,8 @@ from fastapi_cache.decorator import cache
 from api.v1.dependencies import PaginationDepend
 from core import config
 from schemas.genres import GenreResponse as Genre
-from services.genres import GenreService, get_genre_service
+from dependencies import get_genre_service
+from services.genres import GenreService
 
 router = APIRouter()
 
