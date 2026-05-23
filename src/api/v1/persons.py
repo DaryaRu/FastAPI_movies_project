@@ -79,7 +79,7 @@ async def person_details(
 
 
 @router.get(
-    "/{person_uuid}/film/",
+    "/{person_uuid}/film",
     response_model=list[FilmShort],
     summary="Получить все фильмы заданной персоны",
     description=(

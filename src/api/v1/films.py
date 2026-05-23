@@ -1,7 +1,7 @@
 """Film endpoints."""
 
 from http import HTTPStatus
-from typing import Optional
+from typing import Literal, Optional
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query
@@ -84,7 +84,10 @@ async def film_details(
 async def films_list(
     pagination: PaginationDepend,
     film_service: FilmService = Depends(get_film_service),
-    sort: Optional[str] = Query(
+    sort: Literal[
+        "imdb_rating",
+        "-imdb_rating",
+    ] | None = Query(
         default=None,
         description=(
             "Поле для сортировки (например, imdb_rating и -imdb_rating). "
