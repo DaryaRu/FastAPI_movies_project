@@ -6,6 +6,7 @@ from uuid import UUID
 from exceptions import ObjectNotFoundException
 from models.films import Film
 from repositories.films import AbstractFilmRepository
+from utils import parse_sort_param
 
 
 class FilmService:
@@ -40,8 +41,7 @@ class FilmService:
 
         sort_param: dict | None = None
         if sort:
-            order = "desc" if sort.startswith("-") else "asc"
-            field = sort.lstrip("-")
+            field, order = parse_sort_param(sort)
             sort_param = {field: {"order": order}}
 
         data = await self.repository.get_filtered(
