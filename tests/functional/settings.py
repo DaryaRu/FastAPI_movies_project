@@ -72,4 +72,3 @@ class TestSettings(BaseSettings):
  
 
 test_settings = TestSettings()
-print(test_settings.__dict__)

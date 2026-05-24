@@ -2,7 +2,6 @@ import asyncio
 from typing import Awaitable, Callable
 
 import aiohttp
-import pytest
 import pytest_asyncio
 from elasticsearch import AsyncElasticsearch
 from elasticsearch.helpers import async_bulk
@@ -54,17 +53,17 @@ def es_write_data(es_client: AsyncElasticsearch) -> Callable[[list[dict], str, d
     return inner
     
     
-@pytest.fixture(autouse=True)
-async def clear_cache():
-    redis = Redis(
+@pytest_asyncio.fixture()
+async def redis_client():
+    client = Redis(
         host=test_settings.redis_host,
         port=test_settings.redis_port,
         decode_responses=True,
     )
+    yield client
+    await client.aclose()
 
-    await redis.flushdb()
 
-    yield
-
-    await redis.flushdb()
-    await redis.close()
+@pytest_asyncio.fixture(autouse=True)
+async def flush_cache(redis_client: Redis):
+    await redis_client.flushdb()
