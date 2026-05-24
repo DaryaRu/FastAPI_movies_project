@@ -1,0 +1,61 @@
+services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
+    restart: unless-stopped
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200 >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: >
+      redis-server
+      --maxclients 20000
+      --timeout 300
+      --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  api:
+    build: ../../src
+    env_file:
+      - ../../src/.env
+    command: >
+      sh -c "
+      gunicorn main:app --workers 4 --forwarded-allow-ips='*' --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:7000
+      "
+    depends_on:
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    ports:
+      - "9000:7000"
+    restart: unless-stopped
+
+  tests:
+    build: .
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /opt/tests
+    command: >
+      sh -c "
+      python3 /opt/tests/utils/wait_for_es.py &&
+      python3 /opt/tests/utils/wait_for_redis.py &&
+      pytest -vv -s
+      "
+    depends_on:
+      - api

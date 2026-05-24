@@ -126,3 +126,10 @@ etl/
 ### Запуск индексов при старте
 
 При запуске `main.py` проверяет наличие всех трёх индексов в Elasticsearch и создаёт отсутствующие с нужной схемой.
+
+### Тесты
+
+Запуск:
+```
+docker compose up --build --abort-on-container-exit --exit-code-from tests
+```
