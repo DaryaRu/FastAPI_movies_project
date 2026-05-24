@@ -44,7 +44,6 @@ class PersonService:
             docs_sources = await self.person_repo.get_filtered(
                 page_size=page_size,
                 page_number=page_number,
-                query={"match_all": {}},
             )
         return [PersonModel(**source) for source in docs_sources]
 
@@ -54,44 +53,15 @@ class PersonService:
         page_size: int,
         page_number: int,
     ) -> list[FilmShort] | None:
-        """
-        Get all films associated with a specific person via nested queries.
-        """
+        """Get all films associated with a specific person."""
         person = await self.get_by_uuid(person_uuid)
         if not person:
             return None
 
-        movie_query = {
-            "bool": {
-                "should": [
-                    {
-                        "nested": {
-                            "path": "actors",
-                            "query": {"term": {"actors.id": str(person_uuid)}},
-                        }
-                    },
-                    {
-                        "nested": {
-                            "path": "writers",
-                            "query": {
-                                "term": {"writers.id": str(person_uuid)}
-                            },
-                        }
-                    },
-                    {
-                        "nested": {
-                            "path": "directors",
-                            "query": {
-                                "term": {"directors.id": str(person_uuid)}
-                            },
-                        }
-                    },
-                ]
-            }
-        }
-
-        movies_sources = await self.movie_repo.get_filtered(
-            page_size=page_size, page_number=page_number, query=movie_query
+        movies_sources = await self.movie_repo.get_films_by_person(
+            person_id=person_uuid,
+            page_size=page_size,
+            page_number=page_number,
         )
 
         result = []

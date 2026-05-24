@@ -6,7 +6,6 @@ from uuid import UUID
 from exceptions import ObjectNotFoundException
 from models.films import Film
 from repositories.films import AbstractFilmRepository
-from utils import parse_sort_param
 
 
 class FilmService:
@@ -30,23 +29,9 @@ class FilmService:
         page_size: int,
     ) -> list[Film]:
         """Return a paginated list of films (with sort and genre filter)."""
-        query: dict | None = None
-        if genre:
-            query = {
-                "nested": {
-                    "path": "genres",
-                    "query": {"term": {"genres.id": str(genre)}},
-                }
-            }
-
-        sort_param: dict | None = None
-        if sort:
-            field, order = parse_sort_param(sort)
-            sort_param = {field: {"order": order}}
-
-        data = await self.repository.get_filtered(
-            sort=sort_param,
-            query=query,
+        data = await self.repository.get_list(
+            sort=sort,
+            genre=genre,
             page_number=page_number,
             page_size=page_size,
         )
