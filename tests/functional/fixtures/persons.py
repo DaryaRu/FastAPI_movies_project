@@ -51,13 +51,8 @@ async def load_person_data_to_es(
     es_write_data: Callable[[str, dict, list[dict]], Awaitable[None],],
     person_data: list[dict]
 ) -> None:
-    bulk_query: list[dict] = []
-    for row in person_data:
-        data = {'_index': test_settings.es_person_index, '_id': row['id']}
-        data.update({'_source': row})
-        bulk_query.append(data)
     await es_write_data(
-        test_settings.es_person_index,
+        test_settings.elastic_persons_index,
         PERSON_INDEX_SCHEMA,
-        bulk_query,
+        person_data,
     )

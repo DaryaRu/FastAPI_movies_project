@@ -8,7 +8,9 @@ from redis.asyncio import Redis
 from functional.settings import test_settings
 from functional.utils.helpers import create_index, delete_index, load_data
 
-
+pytest_plugins = [
+    'functional.fixtures.persons'
+]
 
 
 @pytest_asyncio.fixture(scope="session")

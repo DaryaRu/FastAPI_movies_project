@@ -4,7 +4,7 @@ import pytest
 
 from functional.settings import test_settings
 
-PERSONS_PATH = "persons/"
+PERSONS_PATH = f"{test_settings.api_prefix}/persons"
 
 
 class SearchCase(NamedTuple):
@@ -29,7 +29,7 @@ class TestPersonSearch:
         http_client: aiohttp.ClientSession,
         case: SearchCase,
     ) -> None:
-        url = f'{PERSONS_PATH}search'
+        url = f'{PERSONS_PATH}/search'
         response = await http_client.get(url, params=case.query)
         body = await response.json()
         assert response.status == case.status_code
@@ -45,7 +45,7 @@ class TestPersonDetails:
         person = person_data[0]
         person_id = person["id"]
 
-        url = f"{PERSONS_PATH}{person_id}/"
+        url = f"{PERSONS_PATH}/{person_id}/"
 
         response = await http_client.get(url)
         body = await response.json()
@@ -60,7 +60,7 @@ class TestPersonDetails:
     ):
         fake_uuid = "11111111-1111-1111-1111-111111111111"
 
-        url = f"{PERSONS_PATH}{fake_uuid}/"
+        url = f"{PERSONS_PATH}/{fake_uuid}/"
 
         response = await http_client.get(url)
         body = await response.json()
@@ -72,7 +72,7 @@ class TestPersonDetails:
         self,
         http_client: aiohttp.ClientSession,
     ):
-        url = f"{PERSONS_PATH}invalid-uuid/"
+        url = f"{PERSONS_PATH}/invalid-uuid/"
 
         response = await http_client.get(url)
         assert response.status == 422
@@ -82,9 +82,9 @@ class TestPersonCache:
     @pytest.mark.parametrize(
         'path',
         [
-            lambda pid: f"{PERSONS_PATH}{pid}/",
-            lambda _: f"{PERSONS_PATH}search?query=Tom",
-            lambda _: {PERSONS_PATH}",
+            lambda pid: f"{PERSONS_PATH}/{pid}/",
+            lambda _: f"{PERSONS_PATH}/search?query=Tom",
+            lambda _: f"{PERSONS_PATH}/",
         ],
     )   
     async def test_person_details_cache(
@@ -94,7 +94,7 @@ class TestPersonCache:
         path: Callable[[str], str],
     ):
         person_id = person_data[0]["id"]
-        url = test_settings.service_url + path(person_id)
+        url = path(person_id)
 
         response = await http_client.get(url)
         first_body = await response.json()
@@ -116,7 +116,7 @@ class TestPersonList:
         [
             ({"page_number": 0, "page_size": 10}, "page_number"),
             ({"page_number": 1, "page_size": 0}, "page_size"),
-            ({"page_number": 1, "page_size": test_settings.service_max_page_size + 1}, "page_size"),
+            ({"page_number": 1, "page_size": test_settings.pagination_max_page_size + 1}, "page_size"),
         ],
     )
     async def test_person_list_invalid_pagination(
@@ -126,7 +126,7 @@ class TestPersonList:
         expected_field: str,
     ):
         params = "&".join([f"{k}={v}" for k, v in query.items()])
-        url = f"{PERSONS_PATH}?{params}"
+        url = f"{PERSONS_PATH}/?{params}"
 
         response = await http_client.get(url)
         body = await response.json()
@@ -138,8 +138,8 @@ class TestPersonList:
         self,
         http_client: aiohttp.ClientSession,
     ):
-        url1 = f"{PERSONS_PATH}?page_number=1&page_size=5"
-        url2 = f"{PERSONS_PATH}?page_number=2&page_size=5"
+        url1 = f"{PERSONS_PATH}/?page_number=1&page_size=5"
+        url2 = f"{PERSONS_PATH}/?page_number=2&page_size=5"
 
         response_1 = await http_client.get(url1)
         body_1 = await response_1.json()
@@ -155,22 +155,22 @@ class TestPersonList:
         self,
         http_client: aiohttp.ClientSession,
     ):
-        url = f"{PERSONS_PATH}?page_size=5&page_number=1"
+        url = f"{PERSONS_PATH}/?page_size=5&page_number=1"
 
         response = await http_client.get(url)
         body = await response.json()
 
         assert response.status == 200
-        assert len(body) <= 5
+        assert len(body) == 5
         
     async def test_person_list_ok(
         self,
         http_client: aiohttp.ClientSession,
     ):
-        url = PERSONS_PATH
+        url = f"{PERSONS_PATH}/"
 
         response = await http_client.get(url)
         body = await response.json()
 
         assert response.status == 200
-        assert len(body) <= test_settings.service_default_page_size
+        assert len(body) <= test_settings.pagination_default_page_size
