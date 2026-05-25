@@ -9,6 +9,8 @@ from functional.settings import test_settings
 from functional.utils.helpers import create_index, delete_index, load_data
 
 
+
+
 @pytest_asyncio.fixture(scope="session")
 async def es_client():
     """Session-scoped Elasticsearch async client."""

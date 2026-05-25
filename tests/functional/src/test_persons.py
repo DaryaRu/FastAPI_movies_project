@@ -2,7 +2,7 @@ from typing import Callable, NamedTuple
 import aiohttp
 import pytest
 
-from settings import test_settings
+from functional.settings import test_settings
 
 PERSONS_PATH = "persons/"
 
