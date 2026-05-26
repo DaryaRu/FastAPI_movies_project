@@ -26,6 +26,8 @@ class TestSettings(BaseSettings):
 
     api_url: str = Field(default="http://localhost:7000", alias="API_URL")
     api_prefix: str = Field(default="/api/v1", alias="API_PREFIX")
+    pagination_default_page_size: int = Field(alias="PAGINATION_DEFAULT_PAGE_SIZE")
+    pagination_max_page_size: int = Field(alias="PAGINATION_MAX_PAGE_SIZE")
 
 
 test_settings = TestSettings()
