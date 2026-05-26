@@ -1,22 +1,10 @@
 """Functional tests for /api/v1/genres endpoints."""
 
 import pytest
-import pytest_asyncio
 from aiohttp import ClientSession
 
 from functional.settings import test_settings
-from functional.testdata.es_mapping import GENRE_INDEX_SCHEMA
 from functional.testdata.genres import GENRES_DATA
-
-
-@pytest_asyncio.fixture(scope="session", autouse=True)
-async def genre_data(es_write_data):
-    """Load genre test data into Elasticsearch."""
-    await es_write_data(
-        test_settings.elastic_genres_index,
-        GENRE_INDEX_SCHEMA,
-        GENRES_DATA,
-    )
 
 
 GENRES_URL = f"{test_settings.api_prefix}/genres"
@@ -155,13 +143,16 @@ class TestGenreCache:
         self, http_client: ClientSession, url: str
     ):
         response_from_es = await http_client.get(url)
+        first_body = await response_from_es.json()
+        first_cache = response_from_es.headers.get("X-FastAPI-Cache")
+
         response_from_cache = await http_client.get(url)
-        assert (
-            await response_from_es.json() == await response_from_cache.json()
-        )
-        assert float(response_from_cache.headers["X-Process-Time"]) < float(
-            response_from_es.headers["X-Process-Time"]
-        )
+        second_body = await response_from_cache.json()
+        second_cache = response_from_cache.headers.get("X-FastAPI-Cache")
+
+        assert first_body == second_body
+        assert first_cache == "MISS"
+        assert second_cache == "HIT"
 
     async def test_different_sort_params_cache(
         self, http_client: ClientSession
@@ -184,6 +175,8 @@ class TestGenreCache:
         response_second_page = await http_client.get(
             GENRES_URL, params={"page_size": 1, "page_number": 2}
         )
+        assert response_first_page.status == 200
+        assert response_second_page.status == 200
         assert (
             await response_first_page.json()
             != await response_second_page.json()
