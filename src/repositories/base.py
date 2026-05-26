@@ -1,11 +1,13 @@
 """Base Elasticsearch repository."""
 
+from abc import ABC
+
 from elasticsearch import AsyncElasticsearch, BadRequestError, NotFoundError
 
 from exceptions import ObjectNotFoundException
 
 
-class BaseElasticRepository:
+class BaseElasticRepository(ABC):
     """Base repository for Elasticsearch operations."""
 
     def __init__(self, elastic_client: AsyncElasticsearch, index: str):

@@ -2,20 +2,15 @@
 
 from uuid import UUID
 
-from elasticsearch import AsyncElasticsearch
-from fastapi import Depends
-
-from core import config
-from db.elastic import get_elastic
 from exceptions import ObjectNotFoundException
 from models.genres import Genre
-from repositories.genres import GenresRepository
+from repositories.genres import AbstractGenreRepository
 
 
 class GenreService:
     """Service class for managing genre-related business logic."""
 
-    def __init__(self, repository: GenresRepository):
+    def __init__(self, repository: AbstractGenreRepository):
         """Initialize service with specialized genre repository."""
         self.genre_repo = repository
 
@@ -42,13 +37,3 @@ class GenreService:
             sort_str=sort,
         )
         return [Genre(**source) for source in docs_sources]
-
-
-def get_genre_service(
-    elastic: AsyncElasticsearch = Depends(get_elastic),
-) -> GenreService:
-    """Dependency provider for GenreService instantiation."""
-    repository = GenresRepository(
-        elastic_client=elastic, index=config.ELASTIC_GENRE_INDEX
-    )
-    return GenreService(repository)
