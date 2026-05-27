@@ -1,9 +1,23 @@
 """Persons repository."""
 
+from abc import abstractmethod
+
 from repositories.base import BaseElasticRepository
 
 
-class PersonsRepository(BaseElasticRepository):
+class AbstractPersonRepository(BaseElasticRepository):
+    """Abstract contract for person repositories."""
+
+    @abstractmethod
+    async def search_persons(
+        self,
+        query_str: str,
+        page_number: int,
+        page_size: int,
+    ) -> list[dict]: ...
+
+
+class PersonsRepository(AbstractPersonRepository):
     """Elasticsearch repository for person documents."""
 
     async def search_persons(

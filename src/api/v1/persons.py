@@ -14,7 +14,8 @@ from api.v1.dependencies import PaginationDepend
 from core import config
 from schemas.film_shorts import FilmShortResponse as FilmShort
 from schemas.persons import Person
-from services.persons import PersonService, get_person_service
+from dependencies import get_person_service
+from services.persons import PersonService
 
 router = APIRouter()
 
@@ -79,7 +80,7 @@ async def person_details(
 
 
 @router.get(
-    "/{person_uuid}/film/",
+    "/{person_uuid}/film",
     response_model=list[FilmShort],
     summary="Получить все фильмы заданной персоны",
     description=(
