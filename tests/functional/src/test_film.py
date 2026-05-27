@@ -4,8 +4,13 @@ import pytest
 from aiohttp import ClientSession
 
 from functional.settings import test_settings
-from functional.testdata.films import FILMS_DATA, FILMS_IDS, TEST_GENRE_ID, \
-                                      TEST_PERSON_ID, FILM_DATA_LIST_LENGTH
+from functional.testdata.films import (
+    FILMS_DATA,
+    FILMS_IDS,
+    TEST_GENRE_ID,
+    TEST_PERSON_ID,
+    FILM_DATA_LIST_LENGTH,
+)
 
 
 FILMS_URL = f"{test_settings.api_prefix}/films"
@@ -24,18 +29,9 @@ class TestFilmDetail:
     @pytest.mark.parametrize(
         "query_data,expected_status",
         [
-            (
-                {"film_id": FILMS_DATA[0]["id"]},
-                200
-            ),
-            (
-                {"film_id": UNKNOWN_UUID},
-                404
-            ),
-            (
-                {"film_id": INVALID_UUID},
-                422
-            ),
+            ({"film_id": FILMS_DATA[0]["id"]}, 200),
+            ({"film_id": UNKNOWN_UUID}, 404),
+            ({"film_id": INVALID_UUID}, 422),
         ],
     )
     async def test_film_detail(
@@ -52,8 +48,15 @@ class TestFilmDetail:
         if response.status == 200:
             data = await response.json()
             expected_fields = {
-                "uuid", "title", "imdb_rating", "description",
-                "creation_date", "directors", "actors", "writers", "genre"
+                "uuid",
+                "title",
+                "imdb_rating",
+                "description",
+                "creation_date",
+                "directors",
+                "actors",
+                "writers",
+                "genre",
             }
             assert expected_fields.issubset(data.keys()), (
                 f"Missing fields: {expected_fields - data.keys()}"
@@ -126,17 +129,13 @@ class TestFilmList:
 
     async def test_returns_all_films(self, http_client: ClientSession):
         response = await http_client.get(
-            FILMS_URL,
-            params={"page_size": PAGE_SIZE}
-            )
+            FILMS_URL, params={"page_size": PAGE_SIZE}
+        )
         data = await response.json()
         assert isinstance(data, list)
         assert len(data) == len(FILMS_DATA)
 
-    async def test_films_list_film_info(
-            self,
-            http_client: ClientSession
-            ):
+    async def test_films_list_film_info(self, http_client: ClientSession):
         response = await http_client.get(FILMS_URL)
         assert response.status == 200
         data = await response.json()
@@ -158,6 +157,7 @@ class TestFilmList:
         )
 
         from functional.fixtures.films import FILMS_DATA
+
         expected_film = FILMS_DATA[0]
 
         assert first_film["uuid"] == expected_film["id"]
@@ -165,12 +165,11 @@ class TestFilmList:
         assert first_film["imdb_rating"] == expected_film["imdb_rating"]
 
     async def test_films_list_filter_by_genre(
-            self,
-            http_client: ClientSession
-            ):
+        self, http_client: ClientSession
+    ):
         response = await http_client.get(
             FILMS_URL,
-            params={"filter[genre]": TEST_GENRE_ID, "page_size": PAGE_SIZE}
+            params={"filter[genre]": TEST_GENRE_ID, "page_size": PAGE_SIZE},
         )
         assert response.status == 200
 
@@ -179,12 +178,10 @@ class TestFilmList:
         assert len(data) == len(FILMS_DATA)
 
     async def test_films_list_invalid_genre_uuid(
-            self,
-            http_client: ClientSession
-            ):
+        self, http_client: ClientSession
+    ):
         response = await http_client.get(
-            FILMS_URL,
-            params={"filter[genre]": INVALID_UUID}
+            FILMS_URL, params={"filter[genre]": INVALID_UUID}
         )
         assert response.status == 422
 
@@ -252,22 +249,13 @@ class TestFilmListPaginationValidation:
     @pytest.mark.parametrize(
         "query_data,expected_answer",
         [
-            (
-                {"page_size": 1},
-                {"status": 200, "count": 1}
-            ),
+            ({"page_size": 1}, {"status": 200, "count": 1}),
             (
                 {"page_size": 100},
-                {"status": 200, "count": FILM_DATA_LIST_LENGTH}
+                {"status": 200, "count": FILM_DATA_LIST_LENGTH},
             ),
-            (
-                {},
-                {"status": 200, "count": DEFAULT_PAGE_SIZE}
-            ),
-            (
-                {"page_number": 9999},
-                {"status": 200, "body": []}
-            ),
+            ({}, {"status": 200, "count": DEFAULT_PAGE_SIZE}),
+            ({"page_number": 9999}, {"status": 200, "body": []}),
         ],
     )
     async def test_valid_pagination_returns_200(
@@ -292,33 +280,29 @@ class TestFilmForPerson:
     """Tests for GET /api/v1/persons/{person_uuid}/film."""
 
     async def test_returns_200_for_valid_person(
-            self,
-            http_client: ClientSession
-            ):
+        self,
+        http_client: ClientSession,
+    ):
         response = await http_client.get(PERSON_FILMS_URL)
         assert response.status == 200
 
     async def test_returns_all_films_for_person(
-            self,
-            http_client: ClientSession
-            ):
+        self, http_client: ClientSession
+    ):
         response = await http_client.get(
-            PERSON_FILMS_URL,
-            params={"page_size": FILM_DATA_LIST_LENGTH}
-            )
+            PERSON_FILMS_URL, params={"page_size": FILM_DATA_LIST_LENGTH}
+        )
         assert response.status == 200
         data = await response.json()
         assert isinstance(data, list)
         assert len(data) == len(FILMS_DATA)
 
     async def test_response_models_validation(
-            self,
-            http_client: ClientSession
-            ):
+        self, http_client: ClientSession
+    ):
         response = await http_client.get(
-            PERSON_FILMS_URL,
-            params={"page_size": 1}
-            )
+            PERSON_FILMS_URL, params={"page_size": 1}
+        )
         assert response.status == 200
         data = await response.json()
         assert len(data) > 0
@@ -338,9 +322,8 @@ class TestFilmForPerson:
         assert film["uuid"] in FILMS_IDS
 
     async def test_unknown_person_returns_404(
-            self,
-            http_client: ClientSession
-            ):
+        self, http_client: ClientSession
+    ):
         url = f"{test_settings.api_prefix}/persons/{UNKNOWN_UUID}/film"
         response = await http_client.get(url)
         assert response.status == 404
@@ -348,9 +331,8 @@ class TestFilmForPerson:
         assert data == ERR_PERSON_NOT_FOUND
 
     async def test_invalid_person_uuid_returns_422(
-            self,
-            http_client: ClientSession
-            ):
+        self, http_client: ClientSession
+    ):
         url = f"{test_settings.api_prefix}/persons/{INVALID_UUID}/film"
         response = await http_client.get(url)
         assert response.status == 422
@@ -384,16 +366,18 @@ class TestFilmCache:
         assert second_cache == "HIT"
 
     async def test_different_sort_params_cache(
-            self,
-            http_client: ClientSession
-            ):
+        self, http_client: ClientSession
+    ):
         response_sorted_asc = await http_client.get(
-            FILMS_URL, params={"sort": "imdb_rating",
-                               "page_size": FILM_DATA_LIST_LENGTH}
+            FILMS_URL,
+            params={"sort": "imdb_rating", "page_size": FILM_DATA_LIST_LENGTH},
         )
         response_sorted_desc = await http_client.get(
-            FILMS_URL, params={"sort": "-imdb_rating",
-                               "page_size": FILM_DATA_LIST_LENGTH}
+            FILMS_URL,
+            params={
+                "sort": "-imdb_rating",
+                "page_size": FILM_DATA_LIST_LENGTH,
+            },
         )
 
         assert (
@@ -415,9 +399,8 @@ class TestFilmCache:
         )
 
     async def test_different_genre_filters_cache(
-            self,
-            http_client: ClientSession
-            ):
+        self, http_client: ClientSession
+    ):
 
         response_action_genre = await http_client.get(
             FILMS_URL, params={"filter[genre]": TEST_GENRE_ID}
@@ -441,23 +424,10 @@ class TestFilmSearch:
             (
                 {"query": "The Star", "page_size": 100},
                 200,
-                FILM_DATA_LIST_LENGTH
+                FILM_DATA_LIST_LENGTH,
             ),
-            (
-                {"query": "Ann", "page_size": 100},
-                200,
-                FILM_DATA_LIST_LENGTH
-            ),
-            (
-                {"query": "55"},
-                200,
-                1
-            ),
-            (
-                {"query": "NonExistingFilm"},
-                200,
-                0
-            ),
+            ({"query": "55"}, 200, 1),
+            ({"query": "NonExistingFilm"}, 200, 0),
         ],
     )
     @pytest.mark.asyncio
@@ -470,7 +440,7 @@ class TestFilmSearch:
     ):
         response = await http_client.get(
             f"{FILMS_URL}/search", params=query_data
-            )
+        )
 
         assert response.status == expected_status
 

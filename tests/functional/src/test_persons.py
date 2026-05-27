@@ -11,7 +11,7 @@ class SearchCase(NamedTuple):
     query: dict[str, str]
     status_code: int
     length: int
-    
+
 
 class TestPersonSearch:
     @pytest.mark.parametrize(
@@ -34,8 +34,8 @@ class TestPersonSearch:
         body = await response.json()
         assert response.status == case.status_code
         assert len(body) == case.length
-        
-        
+
+
 class TestPersonDetails:
     async def test_person_details_ok(
         self,
@@ -53,7 +53,7 @@ class TestPersonDetails:
         assert body["uuid"] == person_id
         assert body["full_name"] == person["name"]
         assert len(body["films"]) == len(person["films"])
-        
+
     async def test_person_details_not_found(
         self,
         http_client: aiohttp.ClientSession,
@@ -67,7 +67,7 @@ class TestPersonDetails:
 
         assert response.status == 404
         assert body["detail"] == "person not found"
-        
+
     async def test_person_details_invalid_uuid(
         self,
         http_client: aiohttp.ClientSession,
@@ -76,8 +76,8 @@ class TestPersonDetails:
 
         response = await http_client.get(url)
         assert response.status == 422
-        
-        
+
+
 class TestPersonCache:
     @pytest.mark.parametrize(
         'path',
@@ -86,7 +86,7 @@ class TestPersonCache:
             lambda _: f"{PERSONS_PATH}/search?query=Tom",
             lambda _: f"{PERSONS_PATH}/",
         ],
-    )   
+    )
     async def test_person_details_cache(
         self,
         http_client: aiohttp.ClientSession,
@@ -108,15 +108,21 @@ class TestPersonCache:
 
         assert first_cache == "MISS"
         assert second_cache == "HIT"
-        
-        
+
+
 class TestPersonList:
     @pytest.mark.parametrize(
         "query, expected_field",
         [
             ({"page_number": 0, "page_size": 10}, "page_number"),
             ({"page_number": 1, "page_size": 0}, "page_size"),
-            ({"page_number": 1, "page_size": test_settings.pagination_max_page_size + 1}, "page_size"),
+            (
+                {
+                    "page_number": 1,
+                    "page_size": test_settings.pagination_max_page_size + 1,
+                },
+                "page_size",
+            ),
         ],
     )
     async def test_person_list_invalid_pagination(
@@ -133,7 +139,7 @@ class TestPersonList:
 
         assert response.status == 422
         assert expected_field in str(body)
-        
+
     async def test_person_list_pagination_different_pages(
         self,
         http_client: aiohttp.ClientSession,
@@ -150,7 +156,7 @@ class TestPersonList:
         assert response_1.status == 200
         assert response_2.status == 200
         assert body_1 != body_2
-        
+
     async def test_person_list_page_size(
         self,
         http_client: aiohttp.ClientSession,
@@ -162,7 +168,7 @@ class TestPersonList:
 
         assert response.status == 200
         assert len(body) == 5
-        
+
     async def test_person_list_ok(
         self,
         http_client: aiohttp.ClientSession,

@@ -1,10 +1,14 @@
 """Base Elasticsearch repository."""
 
+import socket
 from abc import ABC
+from urllib3.exceptions import NameResolutionError
 
 from elasticsearch import AsyncElasticsearch, BadRequestError, NotFoundError
+from elastic_transport import ConnectionTimeout, ConnectionError
 
 from exceptions import ObjectNotFoundException
+from utils.decorators import backoff
 
 
 class BaseElasticRepository(ABC):
@@ -15,6 +19,17 @@ class BaseElasticRepository(ABC):
         self.elastic_client = elastic_client
         self.index = index
 
+    @backoff(
+        start_sleep_time=1,
+        factor=2,
+        border_sleep_time=10,
+        exceptions=(
+            ConnectionError,
+            ConnectionTimeout,
+            NameResolutionError,
+            socket.gaierror,
+        ),
+    )
     async def get_by_id(
         self,
         entity_id: str,
@@ -31,6 +46,17 @@ class BaseElasticRepository(ABC):
             raise ObjectNotFoundException from ex
         return doc["_source"]
 
+    @backoff(
+        start_sleep_time=1,
+        factor=2,
+        border_sleep_time=10,
+        exceptions=(
+            ConnectionError,
+            ConnectionTimeout,
+            NameResolutionError,
+            socket.gaierror,
+        ),
+    )
     async def get_filtered(
         self,
         page_size: int | None = None,
