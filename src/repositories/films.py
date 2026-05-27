@@ -4,7 +4,7 @@ from abc import abstractmethod
 from uuid import UUID
 
 from repositories.base import BaseElasticRepository
-from utils import parse_sort_param
+from utils.parsers import parse_sort_param
 
 
 class AbstractFilmRepository(BaseElasticRepository):
