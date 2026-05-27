@@ -61,7 +61,7 @@ async def film_details(
     film_service: FilmService = Depends(get_film_service),
 ) -> FilmResponse:
     """Endpoint to return full details for a single film by id."""
-    film = await film_service.get_by_id(str(film_id))
+    film = await film_service.get_by_uuid(film_id)
     if not film:
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND,
