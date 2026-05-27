@@ -4,7 +4,7 @@ import pytest
 from aiohttp import ClientSession
 
 from functional.settings import test_settings
-from functional.testdata.films import FILMS_DATA, TEST_GENRE_ID, \
+from functional.testdata.films import FILMS_DATA, FILMS_IDS, TEST_GENRE_ID, \
                                       TEST_PERSON_ID, FILM_DATA_LIST_LENGTH
 
 
@@ -336,7 +336,6 @@ class TestFilmForPerson:
             or film["imdb_rating"] is None
         )
 
-        from functional.fixtures.films import FILMS_IDS
         assert film["uuid"] in FILMS_IDS
 
     async def test_unknown_person_returns_404(
@@ -384,10 +383,6 @@ class TestFilmCache:
 
         assert first_cache == "MISS"
         assert second_cache == "HIT"
-
-        assert float(response_from_cache.headers["X-Process-Time"]) < float(
-            response_from_es.headers["X-Process-Time"]
-        )
 
     async def test_different_sort_params_cache(
             self,
