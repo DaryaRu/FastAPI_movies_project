@@ -3,10 +3,10 @@
 from uuid import UUID
 
 from exceptions import ObjectNotFoundException
+from models.films import Film
 from models.persons import Person as PersonModel
 from repositories.films import AbstractFilmRepository
 from repositories.persons import AbstractPersonRepository
-from schemas.film_shorts import FilmShortResponse as FilmShort
 
 
 class PersonService:
@@ -52,7 +52,7 @@ class PersonService:
         person_uuid: UUID,
         page_size: int,
         page_number: int,
-    ) -> list[FilmShort] | None:
+    ) -> list[Film] | None:
         """Get all films associated with a specific person."""
         person = await self.get_by_uuid(person_uuid)
         if not person:
@@ -63,12 +63,4 @@ class PersonService:
             page_size=page_size,
             page_number=page_number,
         )
-
-        result = []
-        for source in movies_sources:
-            actual_id = source.get("id") or source.get("uuid")
-            if actual_id:
-                source["id"] = actual_id
-                source["uuid"] = actual_id
-            result.append(FilmShort(**source))
-        return result
+        return [Film(**source) for source in movies_sources]

@@ -110,7 +110,7 @@ async def person_films(
         raise HTTPException(
             status_code=HTTPStatus.NOT_FOUND, detail="person not found"
         )
-    return films
+    return [FilmShort.model_validate(f.model_dump()) for f in films]
 
 
 @router.get(
