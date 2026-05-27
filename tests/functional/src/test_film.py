@@ -293,29 +293,29 @@ class TestFilmForPerson:
     """Tests for GET /api/v1/persons/{person_uuid}/film."""
 
     async def test_returns_200_for_valid_person(
-            self,
-            http_client: ClientSession
-            ):
+        self,
+        http_client: ClientSession,
+    ):
         response = await http_client.get(PERSON_FILMS_URL)
         assert response.status == 200
 
     async def test_returns_all_films_for_person(
-            self,
-            http_client: ClientSession
-            ):
+        self,
+        http_client: ClientSession
+    ):
         response = await http_client.get(
             PERSON_FILMS_URL,
             params={"page_size": FILM_DATA_LIST_LENGTH}
-            )
+        )
         assert response.status == 200
         data = await response.json()
         assert isinstance(data, list)
         assert len(data) == len(FILMS_DATA)
 
     async def test_response_models_validation(
-            self,
-            http_client: ClientSession
-            ):
+        self,
+        http_client: ClientSession
+    ):
         response = await http_client.get(
             PERSON_FILMS_URL,
             params={"page_size": 1}
@@ -340,9 +340,9 @@ class TestFilmForPerson:
         assert film["uuid"] in FILMS_IDS
 
     async def test_unknown_person_returns_404(
-            self,
-            http_client: ClientSession
-            ):
+        self,
+        http_client: ClientSession
+    ):
         url = f"{test_settings.api_prefix}/persons/{UNKNOWN_UUID}/film"
         response = await http_client.get(url)
         assert response.status == 404
@@ -350,9 +350,9 @@ class TestFilmForPerson:
         assert data == ERR_PERSON_NOT_FOUND
 
     async def test_invalid_person_uuid_returns_422(
-            self,
-            http_client: ClientSession
-            ):
+        self,
+        http_client: ClientSession
+    ):
         url = f"{test_settings.api_prefix}/persons/{INVALID_UUID}/film"
         response = await http_client.get(url)
         assert response.status == 422

@@ -10,7 +10,7 @@ from functional.settings import test_settings
 
 
 @pytest.fixture(scope='session')
-def person_data() -> list[dict]:
+def person_data(film_data: list[dict]) -> list[dict]:
     names = [
         'Tom Hardy', 'Tom Hanks', 'Tom Holland', 'Thomas Shelby',
         'Emma Stone', 'Emma Watson', 'Emily Blunt', 'Emily Watson',
@@ -43,6 +43,15 @@ def person_data() -> list[dict]:
             for _ in range(random.randint(1, 5))
         ],
     } for name in names]
+    film_person = film_data[0]["actors"][0]
+    es_data.append({
+        'id': film_person['id'], 
+        'name': film_person['name'], 
+        'films': [
+            {'id': film['id'], 'roles': ['actor']}
+            for film in film_data
+        ]
+    })
     return es_data
 
 
