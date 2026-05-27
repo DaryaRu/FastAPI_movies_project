@@ -19,5 +19,3 @@ FILMS_DATA = [
     }
     for i in range(FILM_DATA_LIST_LENGTH)
 ]
-
-FILMS_IDS = {film["id"] for film in FILMS_DATA}

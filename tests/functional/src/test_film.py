@@ -6,7 +6,6 @@ from aiohttp import ClientSession
 from functional.settings import test_settings
 from functional.testdata.films import (
     FILMS_DATA,
-    FILMS_IDS,
     TEST_GENRE_ID,
     TEST_PERSON_ID,
     FILM_DATA_LIST_LENGTH,
@@ -20,7 +19,6 @@ INVALID_UUID = "not-a-valid-uuid-123"
 ERR_FILM_NOT_FOUND = {"detail": "film not found"}
 ERR_PERSON_NOT_FOUND = {"detail": "person not found"}
 PAGE_SIZE = 100
-DEFAULT_PAGE_SIZE = 50
 
 
 class TestFilmDetail:
@@ -254,9 +252,16 @@ class TestFilmListPaginationValidation:
                 {"page_size": 100},
                 {"status": 200, "count": FILM_DATA_LIST_LENGTH},
             ),
-            ({}, {"status": 200, "count": DEFAULT_PAGE_SIZE}),
+            (
+                {},
+                {
+                    "status": 200,
+                    "count": test_settings.pagination_default_page_size,
+                    },
+                    ),
             ({"page_number": 9999}, {"status": 200, "body": []}),
-        ],
+        ]
+
     )
     async def test_valid_pagination_returns_200(
         self,
@@ -319,7 +324,7 @@ class TestFilmForPerson:
             or film["imdb_rating"] is None
         )
 
-        assert film["uuid"] in FILMS_IDS
+        assert film["uuid"] in FILMS_DATA[0]['id']
 
     async def test_unknown_person_returns_404(
         self, http_client: ClientSession
