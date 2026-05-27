@@ -19,12 +19,14 @@ def person_data(film_data: list[dict]) -> list[dict]:
         'Brad Pitt', 'Bradley Cooper', 'Leonardo DiCaprio', 'Leo Tolstoy',
         'Chris Evans', 'Chris Hemsworth', 'Chris Pratt', 'Christian Bale',
         'Robert Downey Jr', 'Robert Pattinson', 'Rob Stark', 'Robin Williams',
-        'Scarlett Johansson', 'Scarlett Byrne', 'Jennifer Lawrence', 'Jennifer Aniston',
+        'Scarlett Johansson', 'Scarlett Byrne',
+        'Jennifer Lawrence', 'Jennifer Aniston',
         'Michael Jordan', 'Michael Fassbender', 'Michelle Yeoh', 'Mike Tyson',
         'Anna Kendrick', 'Anne Hathaway', 'Anabelle Wallis', 'Ann Wilson',
         'Daniel Craig', 'Daniel Radcliffe', 'Dan Stevens', 'Danny DeVito',
         'Kate Winslet', 'Katie Holmes', 'Katherine Langford', 'Kevin Hart',
-        'Samuel Jackson', 'Sam Worthington', 'Samantha Morton', 'Sandra Bullock',
+        'Samuel Jackson', 'Sam Worthington',
+        'Samantha Morton', 'Sandra Bullock',
         'Natalie Portman', 'Nathan Drake', 'Nicole Kidman', 'Nicolas Cage',
         'Peter Parker', 'Piers Brosnan', 'Paul Walker', 'Pam Beesly',
     ]
@@ -45,8 +47,8 @@ def person_data(film_data: list[dict]) -> list[dict]:
     } for name in names]
     film_person = film_data[0]["actors"][0]
     es_data.append({
-        'id': film_person['id'], 
-        'name': film_person['name'], 
+        'id': film_person['id'],
+        'name': film_person['name'],
         'films': [
             {'id': film['id'], 'roles': ['actor']}
             for film in film_data
