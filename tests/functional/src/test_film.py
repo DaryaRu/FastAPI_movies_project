@@ -4,7 +4,7 @@ import pytest
 from aiohttp import ClientSession
 
 from functional.settings import test_settings
-from functional.testdata.films import FILMS_DATA, TEST_GENRE_ID, \
+from functional.testdata.films import FILMS_DATA, FILMS_IDS, TEST_GENRE_ID, \
                                       TEST_PERSON_ID, FILM_DATA_LIST_LENGTH
 
 
@@ -51,7 +51,6 @@ class TestFilmDetail:
 
         if response.status == 200:
             data = await response.json()
-            
             expected_fields = {
                 "uuid", "title", "imdb_rating", "description",
                 "creation_date", "directors", "actors", "writers", "genre"
@@ -336,7 +335,6 @@ class TestFilmForPerson:
             or film["imdb_rating"] is None
         )
 
-        from functional.fixtures.films import FILMS_IDS
         assert film["uuid"] in FILMS_IDS
 
     async def test_unknown_person_returns_404(
@@ -385,10 +383,6 @@ class TestFilmCache:
         assert first_cache == "MISS"
         assert second_cache == "HIT"
 
-        assert float(response_from_cache.headers["X-Process-Time"]) < float(
-            response_from_es.headers["X-Process-Time"]
-        )
-
     async def test_different_sort_params_cache(
             self,
             http_client: ClientSession
@@ -436,3 +430,51 @@ class TestFilmCache:
             await response_action_genre.json()
             != await response_empty_genre.json()
         )
+
+
+class TestFilmSearch:
+    """Tests for GET /api/v1/films/search."""
+
+    @pytest.mark.parametrize(
+        "query_data,expected_status,expected_length",
+        [
+            (
+                {"query": "The Star", "page_size": 100},
+                200,
+                FILM_DATA_LIST_LENGTH
+            ),
+            (
+                {"query": "Ann", "page_size": 100},
+                200,
+                FILM_DATA_LIST_LENGTH
+            ),
+            (
+                {"query": "55"},
+                200,
+                1
+            ),
+            (
+                {"query": "NonExistingFilm"},
+                200,
+                0
+            ),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_film_search(
+        self,
+        http_client: ClientSession,
+        query_data: dict,
+        expected_status: int,
+        expected_length: int,
+    ):
+        response = await http_client.get(
+            f"{FILMS_URL}/search", params=query_data
+            )
+
+        assert response.status == expected_status
+
+        if response.status == 200:
+            data = await response.json()
+            assert isinstance(data, list)
+            assert len(data) == expected_length

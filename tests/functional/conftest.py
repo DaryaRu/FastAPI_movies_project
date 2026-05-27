@@ -10,7 +10,8 @@ from functional.utils.helpers import create_index, delete_index, load_data
 
 pytest_plugins = [
     'functional.fixtures.films',
-    'functional.fixtures.persons'
+    'functional.fixtures.genres',
+    'functional.fixtures.persons',
 ]
 
 
