@@ -38,10 +38,10 @@ async def person_search(
     query: str = Query(..., description="Имя или часть имени для поиска"),
 ) -> list[Person]:
     """Perform a full-text search for persons by name."""
-    return await person_service.get_list(
-        page_size=pagination.page_size,
-        page_number=pagination.page_number,
+    return await person_service.search(
         query=query,
+        page_number=pagination.page_number,
+        page_size=pagination.page_size,
     )
 
 
@@ -133,5 +133,4 @@ async def person_list(
     return await person_service.get_list(
         page_size=pagination.page_size,
         page_number=pagination.page_number,
-        query=None,
     )

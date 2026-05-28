@@ -33,18 +33,24 @@ class PersonService:
         self,
         page_size: int,
         page_number: int,
-        query: str | None = None,
     ) -> list[PersonModel]:
-        """Get a full-text searched or paginated list of persons."""
-        if query:
-            docs_sources = await self.person_repo.search_persons(
-                query_str=query, page_number=page_number, page_size=page_size
-            )
-        else:
-            docs_sources = await self.person_repo.get_filtered(
-                page_size=page_size,
-                page_number=page_number,
-            )
+        """Get a paginated list of persons."""
+        docs_sources = await self.person_repo.get_filtered(
+            page_size=page_size,
+            page_number=page_number,
+        )
+        return [PersonModel(**source) for source in docs_sources]
+
+    async def search(
+        self,
+        query: str,
+        page_number: int,
+        page_size: int,
+    ) -> list[PersonModel]:
+        """Search persons by name."""
+        docs_sources = await self.person_repo.search_persons(
+            query_str=query, page_number=page_number, page_size=page_size
+        )
         return [PersonModel(**source) for source in docs_sources]
 
     async def get_person_films(
