@@ -79,6 +79,7 @@ class TestGenreList:
 
     async def test_returns_all_genres(self, http_client: ClientSession):
         response = await http_client.get(GENRES_URL)
+        assert response.status == 200
         data = await response.json()
         assert isinstance(data, list)
         assert len(data) == len(GENRES_DATA)
@@ -87,10 +88,13 @@ class TestGenreList:
         self, http_client: ClientSession
     ):
         response = await http_client.get(GENRES_URL)
+        assert response.status == 200
         data = await response.json()
         genre = data[0]
-        assert "uuid" in genre
-        assert "name" in genre
+        expected_fields = {"uuid", "name"}
+        assert expected_fields.issubset(genre.keys()), (
+            f"Missing fields: {expected_fields - genre.keys()}"
+        )
 
 
 class TestGenreListSorting:
