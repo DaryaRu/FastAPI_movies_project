@@ -3,10 +3,10 @@
 from uuid import UUID
 
 from exceptions import ObjectNotFoundException
+from models.films import FilmShort
 from models.persons import Person as PersonModel
 from repositories.films import AbstractFilmRepository
 from repositories.persons import AbstractPersonRepository
-from schemas.film_shorts import FilmShortResponse as FilmShort
 
 
 class PersonService:
@@ -33,18 +33,24 @@ class PersonService:
         self,
         page_size: int,
         page_number: int,
-        query: str | None = None,
     ) -> list[PersonModel]:
-        """Get a full-text searched or paginated list of persons."""
-        if query:
-            docs_sources = await self.person_repo.search_persons(
-                query_str=query, page_number=page_number, page_size=page_size
-            )
-        else:
-            docs_sources = await self.person_repo.get_filtered(
-                page_size=page_size,
-                page_number=page_number,
-            )
+        """Get a paginated list of persons."""
+        docs_sources = await self.person_repo.get_filtered(
+            page_size=page_size,
+            page_number=page_number,
+        )
+        return [PersonModel(**source) for source in docs_sources]
+
+    async def search(
+        self,
+        query: str,
+        page_number: int,
+        page_size: int,
+    ) -> list[PersonModel]:
+        """Search persons by name."""
+        docs_sources = await self.person_repo.search_persons(
+            query_str=query, page_number=page_number, page_size=page_size
+        )
         return [PersonModel(**source) for source in docs_sources]
 
     async def get_person_films(
@@ -63,12 +69,4 @@ class PersonService:
             page_size=page_size,
             page_number=page_number,
         )
-
-        result = []
-        for source in movies_sources:
-            actual_id = source.get("id") or source.get("uuid")
-            if actual_id:
-                source["id"] = actual_id
-                source["uuid"] = actual_id
-            result.append(FilmShort(**source))
-        return result
+        return [FilmShort(**source) for source in movies_sources]

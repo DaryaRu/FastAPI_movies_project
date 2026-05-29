@@ -9,6 +9,12 @@ from models.genres import Genre
 from models.persons import Person
 
 
+class FilmShort(BaseModel):
+    id: UUID
+    title: str
+    imdb_rating: float | None = None
+
+
 class Film(BaseModel):
     id: UUID
     title: str
