@@ -13,15 +13,17 @@ def backoff(
     exceptions=(Exception,),
 ):
     """
-    Функция для повторного выполнения функции через некоторое время, если возникла ошибка.
-    Использует наивный экспоненциальный рост времени повтора (factor) до граничного времени
-    ожидания (border_sleep_time)
+    Функция для повторного выполнения функции через некоторое время,
+    если возникла ошибка.
+    Использует наивный экспоненциальный рост времени повтора (factor)
+    до граничного времени ожидания (border_sleep_time)
 
     Формула:
         t = start_sleep_time * (factor ^ n), если t < border_sleep_time
         t = border_sleep_time, иначе
     :param start_sleep_time: начальное время ожидания
-    :param factor: во сколько раз нужно увеличивать время ожидания на каждой итерации
+    :param factor: во сколько раз нужно увеличивать время ожидания
+        на каждой итерации
     :param border_sleep_time: максимальное время ожидания
     :return: результат выполнения функции
     """
@@ -42,7 +44,9 @@ def backoff(
                     noise = random.normalvariate(0, sleep_time * jitter)
                     sleep_with_jitter = sleep_time + noise
                     sleep_with_jitter = max(0, sleep_with_jitter)
-                    sleep_with_jitter = min(sleep_with_jitter, border_sleep_time)
+                    sleep_with_jitter = min(
+                        sleep_with_jitter, border_sleep_time
+                    )
                     time.sleep(sleep_with_jitter)
                     sleep_time = min(sleep_time * factor, border_sleep_time)
                 except Exception:
