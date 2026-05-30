@@ -5,6 +5,10 @@ from aiohttp import ClientSession
 
 from functional.settings import test_settings
 from functional.testdata.genres import GENRES_DATA
+from tests.functional.utils.check_methods import (
+    assert_required_fields,
+    assert_status_return_json,
+)
 
 
 GENRES_URL = f"{test_settings.api_prefix}/genres"
@@ -42,9 +46,10 @@ class TestGenreDetail:
         response = await http_client.get(
             f"{GENRES_URL}/{query_data['genre_id']}"
         )
-        assert response.status == expected_answer["status"]
+        data = await assert_status_return_json(
+            response, expected_answer["status"]
+            )
         if response.status == 200:
-            data = await response.json()
             assert data["uuid"] == expected_answer["uuid"]
             assert data["name"] == expected_answer["name"]
 
@@ -79,8 +84,7 @@ class TestGenreList:
 
     async def test_returns_all_genres(self, http_client: ClientSession):
         response = await http_client.get(GENRES_URL)
-        assert response.status == 200
-        data = await response.json()
+        data = await assert_status_return_json(response, 200)
         assert isinstance(data, list)
         assert len(data) == len(GENRES_DATA)
 
@@ -88,13 +92,10 @@ class TestGenreList:
         self, http_client: ClientSession
     ):
         response = await http_client.get(GENRES_URL)
-        assert response.status == 200
-        data = await response.json()
+        data = await assert_status_return_json(response, 200)
         genre = data[0]
         expected_fields = {"uuid", "name"}
-        assert expected_fields.issubset(genre.keys()), (
-            f"Missing fields: {expected_fields - genre.keys()}"
-        )
+        assert_required_fields(genre, expected_fields)
 
 
 class TestGenreListSorting:
@@ -120,8 +121,7 @@ class TestGenreListSorting:
         expected: list,
     ):
         response = await http_client.get(GENRES_URL, params=query_data)
-        assert response.status == 200
-        data = await response.json()
+        data = await assert_status_return_json(response, 200)
         names = [g["name"] for g in data]
         assert names == expected
 
@@ -179,12 +179,14 @@ class TestGenreCache:
         response_second_page = await http_client.get(
             GENRES_URL, params={"page_size": 1, "page_number": 2}
         )
-        assert response_first_page.status == 200
-        assert response_second_page.status == 200
-        assert (
-            await response_first_page.json()
-            != await response_second_page.json()
-        )
+        data_first_page = await assert_status_return_json(
+            response_first_page, 200
+            )
+        data_second_page = await assert_status_return_json(
+            response_second_page, 200
+            )
+
+        assert data_first_page != data_second_page
 
 
 class TestGenreListPaginationValidation:
@@ -227,9 +229,10 @@ class TestGenreListPaginationValidation:
         expected_answer: dict,
     ):
         response = await http_client.get(GENRES_URL, params=query_data)
-        assert response.status == expected_answer["status"]
+        data = await assert_status_return_json(
+            response, expected_answer["status"]
+            )
         if "count" in expected_answer or "body" in expected_answer:
-            data = await response.json()
             if "count" in expected_answer:
                 assert len(data) == expected_answer["count"]
             if "body" in expected_answer:
