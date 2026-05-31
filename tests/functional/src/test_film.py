@@ -10,7 +10,9 @@ from functional.testdata.films import (
     TEST_PERSON_ID,
     FILM_DATA_LIST_LENGTH,
 )
-from tests.functional.src.cases import DetailCase, ListCase, ValidationErrorCase, SearchCase, SortCase
+from tests.functional.src.cases import (DetailCase, ListCase,
+                                        ValidationErrorCase,
+                                        SearchCase, SortCase)
 from tests.functional.utils.check_methods import (
     assert_required_fields, assert_status_return_json
 )
@@ -201,10 +203,10 @@ class TestFilmListSorting:
         assert ratings == case.expected_order
 
     @pytest.mark.parametrize(
-        "case", 
+        "case",
         [
-            ValidationErrorCase({"sort": "id"}, 422), 
-            ValidationErrorCase({"sort": "description"}, 422), 
+            ValidationErrorCase({"sort": "id"}, 422),
+            ValidationErrorCase({"sort": "description"}, 422),
             ValidationErrorCase({"sort": "invalid_field"}, 422)
         ]
     )
@@ -242,11 +244,18 @@ class TestFilmListPaginationValidation:
         "case",
         [
             ListCase(query={"page_size": 1}, status_code=200, length=1),
-            ListCase(query={"page_size": 100}, status_code=200, length=FILM_DATA_LIST_LENGTH),
-            ListCase(query={}, status_code=200, length=test_settings.pagination_default_page_size),
+            ListCase(
+                query={"page_size": 100},
+                status_code=200,
+                length=FILM_DATA_LIST_LENGTH,
+            ),
+            ListCase(
+                query={},
+                status_code=200,
+                length=test_settings.pagination_default_page_size,
+            ),
             ListCase(query={"page_number": 9999}, status_code=200, body=[]),
-        ]
-
+        ],
     )
     async def test_valid_pagination_returns_200(
         self,
@@ -400,16 +409,24 @@ class TestFilmCache:
             await response_action_genre.json()
             != await response_empty_genre.json()
         )
-        
+
     @pytest.mark.parametrize(
         'url_1, url_2',
         [
-            (f"{FILMS_URL}/{FILMS_DATA[0]['id']}/", f"{FILMS_URL}/{FILMS_DATA[1]['id']}/"),
-            (f"{FILMS_URL}/search?query=star", f"{FILMS_URL}/search?query=6"),
-            (f"{FILMS_URL}/?page_number=1&page_size=5", f"{FILMS_URL}/?page_number=1&page_size=10"
+            (
+                f"{FILMS_URL}/{FILMS_DATA[0]['id']}/",
+                f"{FILMS_URL}/{FILMS_DATA[1]['id']}/",
+            ),
+            (
+                f"{FILMS_URL}/search?query=star",
+                f"{FILMS_URL}/search?query=6",
+            ),
+            (
+                f"{FILMS_URL}/?page_number=1&page_size=5",
+                f"{FILMS_URL}/?page_number=1&page_size=10",
             ),
         ],
-    )    
+    )
     async def test_person_cache_isolated_by_query(
         self,
         http_client: ClientSession,
@@ -439,6 +456,24 @@ class TestFilmSearch:
             ),
             SearchCase({"query": "5"}, 200, 1),
             SearchCase({"query": "NonExistingFilm"}, 200, 0),
+            SearchCase(
+                {"query": "THE STAR", "page_size": 100},
+                200,
+                FILM_DATA_LIST_LENGTH
+                ),
+            SearchCase(
+                {"query": "the star", "page_size": 100},
+                200,
+                FILM_DATA_LIST_LENGTH
+                ),
+            SearchCase(
+                {"query": "ThE StAr", "page_size": 100},
+                200,
+                FILM_DATA_LIST_LENGTH
+                ),
+            SearchCase({"query": "5"}, 200, 1),
+            SearchCase({"query": "NonExistingFilm"}, 200, 0),
+            SearchCase({"query": "test", "page_number": 10001}, 200, 0),
         ],
     )
     @pytest.mark.asyncio
@@ -453,3 +488,37 @@ class TestFilmSearch:
         data = await assert_status_return_json(response, case.status_code)
         assert isinstance(data, list)
         assert len(data) == case.length
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            ValidationErrorCase({}, 422),
+            ValidationErrorCase({"page_size": 10}, 422),
+            ValidationErrorCase({"page_number": 1}, 422),
+
+            ValidationErrorCase({"query": "test", "page_size": 0}, 422),
+            ValidationErrorCase({"query": "test", "page_size": -1}, 422),
+            ValidationErrorCase({"query": "test", "page_size": 10001}, 422),
+
+            ValidationErrorCase({"query": "test", "page_number": 0}, 422),
+            ValidationErrorCase({"query": "test", "page_number": -1}, 422),
+
+            ValidationErrorCase({"query": "test", "page_size": "string"}, 422),
+            ValidationErrorCase(
+                {"query": "test", "page_number": "string"}, 422
+                ),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_film_search_ng(
+        self,
+        http_client: ClientSession,
+        case: ValidationErrorCase,
+    ):
+        response = await http_client.get(
+            f"{FILMS_URL}/search", params=case.query
+        )
+
+        await assert_status_return_json(
+            response, case.status_code
+            )

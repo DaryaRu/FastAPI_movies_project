@@ -34,6 +34,64 @@ class TestPersonSearch:
         body = await assert_status_return_json(response, case.status_code)
         assert len(body) == case.length
 
+    @pytest.mark.parametrize(
+        "case",
+        [
+            SearchCase("tom", 200, 3),
+            SearchCase("TOM", 200, 3),
+            SearchCase("Tom", 200, 3),
+            SearchCase("tOm", 200, 3),
+            SearchCase("emma", 200, 2),
+            SearchCase("EMMA", 200, 2),
+            SearchCase("Emma", 200, 2),
+        ]
+    )
+    @pytest.mark.asyncio
+    async def test_person_search_case_insensitive(
+        self,
+        http_client: aiohttp.ClientSession,
+        case: SearchCase,
+    ) -> None:
+        response = await http_client.get(
+            f"{PERSONS_PATH}/search",
+            params={"query": case.query, "page_size": 100}
+        )
+        data = await assert_status_return_json(response, case.status_code)
+        assert isinstance(data, list)
+        assert len(data) >= case.length
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            ValidationErrorCase({}, 422),
+            ValidationErrorCase({"page_size": 10}, 422),
+            ValidationErrorCase({"page_number": 1}, 422),
+
+            ValidationErrorCase({"query": "Tom", "page_size": 0}, 422),
+            ValidationErrorCase({"query": "Tom", "page_size": -1}, 422),
+            ValidationErrorCase({"query": "Tom", "page_size": 10001}, 422),
+
+            ValidationErrorCase({"query": "Tom", "page_number": 0}, 422),
+            ValidationErrorCase({"query": "Tom", "page_number": -1}, 422),
+
+            ValidationErrorCase({"query": "Tom", "page_size": "string"}, 422),
+            ValidationErrorCase(
+                {"query": "Tom", "page_number": "string"}, 422
+                ),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_person_search_ng(
+        self,
+        http_client: aiohttp.ClientSession,
+        case: ValidationErrorCase,
+    ) -> None:
+        response = await http_client.get(
+            f"{PERSONS_PATH}/search", params=case.query
+        )
+
+        await assert_status_return_json(response, case.status_code)
+
 
 class TestPersonDetails:
     async def test_person_details_ok(
@@ -105,18 +163,24 @@ class TestPersonCache:
 
         assert first_cache == "MISS"
         assert second_cache == "HIT"
-    
+
     @pytest.mark.parametrize(
         'get_url_1, get_url_2',
         [
-            (lambda pid: f"{PERSONS_PATH}/{pid}/", lambda pid: f"{PERSONS_PATH}/{pid}/"),
-            (lambda _: f"{PERSONS_PATH}/search?query=Tom", lambda _: f"{PERSONS_PATH}/search?query=Emma"),
+            (
+                lambda pid: f"{PERSONS_PATH}/{pid}/",
+                lambda pid: f"{PERSONS_PATH}/{pid}/",
+            ),
+            (
+                lambda _: f"{PERSONS_PATH}/search?query=Tom",
+                lambda _: f"{PERSONS_PATH}/search?query=Emma",
+            ),
             (
                 lambda _: f"{PERSONS_PATH}/?page_number=1&page_size=5",
-                lambda _: f"{PERSONS_PATH}/?page_number=1&page_size=10"
+                lambda _: f"{PERSONS_PATH}/?page_number=1&page_size=10",
             ),
         ],
-    )    
+    )
     async def test_person_cache_isolated_by_query(
         self,
         http_client: aiohttp.ClientSession,
@@ -126,7 +190,7 @@ class TestPersonCache:
     ):
         person_id_1 = person_data[0]["id"]
         url_1 = get_url_1(person_id_1)
-        
+
         person_id_2 = person_data[1]["id"]
         url_2 = get_url_2(person_id_2)
 
@@ -144,12 +208,24 @@ class TestPersonList:
     @pytest.mark.parametrize(
         "case",
         [
-            ValidationErrorCase({"page_number": -1, "page_size": 10}, 422, "page_number"),
-            ValidationErrorCase({"page_number": 0, "page_size": 10}, 422, "page_number"),
-            ValidationErrorCase({"page_number": "two", "page_size": 10}, 422, "page_number"),
-            ValidationErrorCase({"page_number": 1, "page_size": 0}, 422, "page_size"),
-            ValidationErrorCase({"page_number": 1, "page_size": -10}, 422, "page_size"),
-            ValidationErrorCase({"page_number": 1, "page_size": "one"}, 422, "page_size"),
+            ValidationErrorCase(
+                {"page_number": -1, "page_size": 10}, 422, "page_number"
+            ),
+            ValidationErrorCase(
+                {"page_number": 0, "page_size": 10}, 422, "page_number"
+            ),
+            ValidationErrorCase(
+                {"page_number": "two", "page_size": 10}, 422, "page_number"
+            ),
+            ValidationErrorCase(
+                {"page_number": 1, "page_size": 0}, 422, "page_size"
+            ),
+            ValidationErrorCase(
+                {"page_number": 1, "page_size": -10}, 422, "page_size"
+            ),
+            ValidationErrorCase(
+                {"page_number": 1, "page_size": "one"}, 422, "page_size"
+            ),
             ValidationErrorCase(
                 {
                     "page_number": 1,
@@ -168,7 +244,7 @@ class TestPersonList:
         url = f"{PERSONS_PATH}"
         response = await http_client.get(url, params=case.query)
         body = await assert_status_return_json(response, 422)
-        assert expected_field in str(body)
+        assert case.expected_field in str(body)
 
     async def test_person_list_pagination_different_pages(
         self,
