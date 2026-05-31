@@ -2,7 +2,8 @@
 
 import logging
 
-from elasticsearch import AsyncElasticsearch, BadRequestError, NotFoundError
+import pytest
+from elasticsearch import AsyncElasticsearch, NotFoundError
 from elasticsearch.helpers import async_bulk
 
 logger = logging.getLogger(__name__)
@@ -11,15 +12,13 @@ logger = logging.getLogger(__name__)
 async def create_index(
     es_client: AsyncElasticsearch, index: str, schema: dict
 ) -> None:
-    """Create ES index (if does not exist)."""
-    try:
-        await es_client.indices.create(
-            index=index,
-            settings=schema.get("settings"),
-            mappings=schema.get("mappings"),
-        )
-    except BadRequestError:
-        pass
+    """Delete index if exists and then create fresh index."""
+    await delete_index(es_client, index)
+    await es_client.indices.create(
+        index=index,
+        settings=schema.get("settings"),
+        mappings=schema.get("mappings"),
+    )
 
 
 async def delete_index(es_client: AsyncElasticsearch, index: str) -> None:
@@ -40,11 +39,8 @@ async def load_data(
         refresh=True,
     )
     if errors:
-        logger.error(
-            "Failed to index %d documents into '%s': %s",
-            len(errors), index, errors,
+        pytest.fail(
+            f"Failed to index {len(errors)} document(s) into '{index}': "
+            f"{errors}"
         )
-    else:
-        logger.info(
-            "Successfully indexed %d documents into '%s'", updated, index
-        )
+    logger.info("Successfully indexed %d documents into '%s'", updated, index)
