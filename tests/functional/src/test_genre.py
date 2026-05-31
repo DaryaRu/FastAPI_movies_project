@@ -1,10 +1,13 @@
 """Functional tests for /api/v1/genres endpoints."""
 
+from typing import Callable
+
 import pytest
 from aiohttp import ClientSession
 
 from functional.settings import test_settings
 from functional.testdata.genres import GENRES_DATA
+from tests.functional.src.cases import DetailCase, ListCase, SortCase, ValidationErrorCase
 from tests.functional.utils.check_methods import (
     assert_required_fields,
     assert_status_return_json,
@@ -21,58 +24,44 @@ class TestGenreDetail:
     """Tests for GET /api/v1/genres/{genre_id}."""
 
     @pytest.mark.parametrize(
-        "query_data,expected_answer",
+        "case",
         [
-            (
-                {"genre_id": GENRE_ID},
-                {
-                    "status": 200,
-                    "uuid": GENRE_ID,
-                    "name": GENRES_DATA[0]["name"],
-                },
-            ),
-            (
-                {"genre_id": UNKNOWN_ID},
-                {"status": 404},
-            ),
+            DetailCase(GENRE_ID, 200, GENRE_ID, GENRES_DATA[0]["name"]),
+            DetailCase(UNKNOWN_ID, 404),
         ],
     )
     async def test_genre_detail(
         self,
         http_client: ClientSession,
-        query_data: dict,
-        expected_answer: dict,
+        case: DetailCase,
     ):
         response = await http_client.get(
-            f"{GENRES_URL}/{query_data['genre_id']}"
+            f"{GENRES_URL}/{case.entity_id}"
         )
-        data = await assert_status_return_json(
-            response, expected_answer["status"]
-            )
-        if response.status == 200:
-            assert data["uuid"] == expected_answer["uuid"]
-            assert data["name"] == expected_answer["name"]
+        data = await assert_status_return_json(response, case.status_code)      
+        if response.status == 200:                                              
+            assert data["uuid"] == case.expected_uuid                           
+            assert data["name"] == case.expected_name
 
 
 class TestGenreDetailValidation:
     """Test UUID validation."""
 
     @pytest.mark.parametrize(
-        "query_data,expected_answer",
+        "case",
         [
-            ("true", 422),
-            ("111", 422),
-            ("00000000-0000-0000-0000-00000000000Z", 422),
+            DetailCase("true", 422),
+            DetailCase("111", 422),
+            DetailCase("00000000-0000-0000-0000-00000000000Z", 422),
         ],
     )
     async def test_invalid_uuid_returns_422(
         self,
         http_client: ClientSession,
-        query_data: str,
-        expected_answer: int,
+        case: DetailCase,
     ):
-        response = await http_client.get(f"{GENRES_URL}/{query_data}")
-        assert response.status == expected_answer
+        response = await http_client.get(f"{GENRES_URL}/{case.entity_id}")
+        assert response.status == case.status_code
 
 
 class TestGenreList:
@@ -102,14 +91,16 @@ class TestGenreListSorting:
     """Tests for sort query parameter."""
 
     @pytest.mark.parametrize(
-        "query_data,expected",
+        "case",
         [
-            (
+            SortCase(
                 {"sort": "name"},
+                200,
                 sorted([g["name"] for g in GENRES_DATA]),
             ),
-            (
+            SortCase(
                 {"sort": "-name"},
+                200,
                 sorted([g["name"] for g in GENRES_DATA], reverse=True),
             ),
         ],
@@ -117,20 +108,26 @@ class TestGenreListSorting:
     async def test_sort_returns_sorted_list(
         self,
         http_client: ClientSession,
-        query_data: dict,
-        expected: list,
+        case: SortCase,
     ):
-        response = await http_client.get(GENRES_URL, params=query_data)
-        data = await assert_status_return_json(response, 200)
+        response = await http_client.get(GENRES_URL, params=case.query)
+        data = await assert_status_return_json(response, case.status_code)
         names = [g["name"] for g in data]
-        assert names == expected
+        assert names == case.expected_order
 
-    @pytest.mark.parametrize("sort", ["id", "uuid"])
+    @pytest.mark.parametrize(
+        "case", 
+        [
+            ValidationErrorCase({"sort": "id"}, 422), 
+            ValidationErrorCase({"sort": "uuid"}, 422), 
+            ValidationErrorCase({"sort": "invalid_field"}, 422)
+        ]
+    )
     async def test_invalid_sort_returns_422(
-        self, http_client: ClientSession, sort: str
+        self, http_client: ClientSession, case: ValidationErrorCase
     ):
-        response = await http_client.get(GENRES_URL, params={"sort": sort})
-        assert response.status == 422
+        response = await http_client.get(GENRES_URL, params=case.query)
+        assert response.status == case.status_code
 
 
 class TestGenreCache:
@@ -181,59 +178,78 @@ class TestGenreCache:
         )
         data_first_page = await assert_status_return_json(
             response_first_page, 200
-            )
+        )
         data_second_page = await assert_status_return_json(
             response_second_page, 200
-            )
-
+        )
         assert data_first_page != data_second_page
+        
+    @pytest.mark.parametrize(
+        'url_1, url_2',
+        [
+            (f"{GENRES_URL}/{GENRES_DATA[0]["id"]}/", f"{GENRES_URL}/{GENRES_DATA[1]["id"]}/"),
+            (
+                f"{GENRES_URL}/?page_number=1&page_size=5",
+                f"{GENRES_URL}/?page_number=1&page_size=10"
+            ),
+        ],
+    )    
+    async def test_person_cache_isolated_by_query(
+        self,
+        http_client: ClientSession,
+        url_1: str,
+        url_2: str,
+    ):
+        response_1 = await http_client.get(url_1)
+        assert response_1.headers["X-FastAPI-Cache"] == "MISS"
+
+        response_2 = await http_client.get(url_1)
+        assert response_2.headers["X-FastAPI-Cache"] == "HIT"
+
+        response_3 = await http_client.get(url_2)
+        assert response_3.headers["X-FastAPI-Cache"] == "MISS"
 
 
 class TestGenreListPaginationValidation:
     """Tests for pagination query parameters."""
 
     @pytest.mark.parametrize(
-        "query_data,expected_answer",
+        "case",
         [
-            ({"page_number": 0}, 422),
-            ({"page_number": -1}, 422),
-            ({"page_number": -100}, 422),
-            ({"page_size": 0}, 422),
-            ({"page_size": -1}, 422),
-            ({"page_size": 101}, 422),
-            ({"page_size": 1000}, 422),
-            ({"page_number": "abc"}, 422),
+            ValidationErrorCase({"page_number": 0}, 422),
+            ValidationErrorCase({"page_number": -1}, 422),
+            ValidationErrorCase({"page_number": -100}, 422),
+            ValidationErrorCase({"page_size": 0}, 422),
+            ValidationErrorCase({"page_size": -1}, 422),
+            ValidationErrorCase({"page_size": 101}, 422),
+            ValidationErrorCase({"page_size": 1000}, 422),
+            ValidationErrorCase({"page_number": "abc"}, 422),
         ],
     )
     async def test_invalid_pagination_returns_422(
         self,
         http_client: ClientSession,
-        query_data: dict,
-        expected_answer: int,
+        case: ValidationErrorCase,
     ):
-        response = await http_client.get(GENRES_URL, params=query_data)
-        assert response.status == expected_answer
+        response = await http_client.get(GENRES_URL, params=case.query)
+        assert response.status == case.status_code
 
     @pytest.mark.parametrize(
-        "query_data,expected_answer",
+        "case",
         [
-            ({"page_size": 1}, {"status": 200, "count": 1}),
-            ({"page_size": 100}, {"status": 200}),
-            ({"page_number": 9999}, {"status": 200, "body": []}),
+            ListCase({"page_size": 1}, 200, length=1),
+            ListCase({"page_size": 100}, 200),
+            ListCase({"page_number": 9999}, 200, body=[]),
         ],
     )
     async def test_valid_pagination_returns_200(
         self,
         http_client: ClientSession,
-        query_data: dict,
-        expected_answer: dict,
+        case: ListCase,
     ):
-        response = await http_client.get(GENRES_URL, params=query_data)
-        data = await assert_status_return_json(
-            response, expected_answer["status"]
-            )
-        if "count" in expected_answer or "body" in expected_answer:
-            if "count" in expected_answer:
-                assert len(data) == expected_answer["count"]
-            if "body" in expected_answer:
-                assert data == expected_answer["body"]
+        response = await http_client.get(GENRES_URL, params=case.query)
+        data = await assert_status_return_json(response, case.status_code)
+        if case.length is not None:
+            assert len(data) == case.length
+        if case.body is not None:
+            assert data == case.body

@@ -1,8 +1,9 @@
-from typing import Callable, NamedTuple
+from typing import Callable
 import aiohttp
 import pytest
 
 from functional.settings import test_settings
+from tests.functional.src.cases import SearchCase, ValidationErrorCase
 from tests.functional.utils.check_methods import (
     assert_status_return_json,
 )
@@ -10,20 +11,16 @@ from tests.functional.utils.check_methods import (
 PERSONS_PATH = f"{test_settings.api_prefix}/persons"
 
 
-class SearchCase(NamedTuple):
-    query: dict[str, str]
-    status_code: int
-    length: int
-
-
 class TestPersonSearch:
     @pytest.mark.parametrize(
         'case',
         [
             SearchCase({'query': 'Tom'}, 200, 3),
+            SearchCase({'query': 'TOM'}, 200, 3),
             SearchCase({'query': 'Emma'}, 200, 2),
             SearchCase({'query': 'Chris'}, 200, 3),
             SearchCase({'query': 'Robert'}, 200, 2),
+            SearchCase({'query': 'robert'}, 200, 2),
             SearchCase({'query': 'NonExistingPerson'}, 200, 0),
         ]
     )
@@ -87,7 +84,7 @@ class TestPersonCache:
             lambda _: f"{PERSONS_PATH}/",
         ],
     )
-    async def test_person_details_cache(
+    async def test_persons_cache(
         self,
         http_client: aiohttp.ClientSession,
         person_data: list[dict],
@@ -108,19 +105,57 @@ class TestPersonCache:
 
         assert first_cache == "MISS"
         assert second_cache == "HIT"
+    
+    @pytest.mark.parametrize(
+        'get_url_1, get_url_2',
+        [
+            (lambda pid: f"{PERSONS_PATH}/{pid}/", lambda pid: f"{PERSONS_PATH}/{pid}/"),
+            (lambda _: f"{PERSONS_PATH}/search?query=Tom", lambda _: f"{PERSONS_PATH}/search?query=Emma"),
+            (
+                lambda _: f"{PERSONS_PATH}/?page_number=1&page_size=5",
+                lambda _: f"{PERSONS_PATH}/?page_number=1&page_size=10"
+            ),
+        ],
+    )    
+    async def test_person_cache_isolated_by_query(
+        self,
+        http_client: aiohttp.ClientSession,
+        person_data: list[dict],
+        get_url_1: Callable[[str], str],
+        get_url_2: Callable[[str], str],
+    ):
+        person_id_1 = person_data[0]["id"]
+        url_1 = get_url_1(person_id_1)
+        
+        person_id_2 = person_data[1]["id"]
+        url_2 = get_url_2(person_id_2)
+
+        response_1 = await http_client.get(url_1)
+        assert response_1.headers["X-FastAPI-Cache"] == "MISS"
+
+        response_2 = await http_client.get(url_1)
+        assert response_2.headers["X-FastAPI-Cache"] == "HIT"
+
+        response_3 = await http_client.get(url_2)
+        assert response_3.headers["X-FastAPI-Cache"] == "MISS"
 
 
 class TestPersonList:
     @pytest.mark.parametrize(
-        "query, expected_field",
+        "case",
         [
-            ({"page_number": 0, "page_size": 10}, "page_number"),
-            ({"page_number": 1, "page_size": 0}, "page_size"),
-            (
+            ValidationErrorCase({"page_number": -1, "page_size": 10}, 422, "page_number"),
+            ValidationErrorCase({"page_number": 0, "page_size": 10}, 422, "page_number"),
+            ValidationErrorCase({"page_number": "two", "page_size": 10}, 422, "page_number"),
+            ValidationErrorCase({"page_number": 1, "page_size": 0}, 422, "page_size"),
+            ValidationErrorCase({"page_number": 1, "page_size": -10}, 422, "page_size"),
+            ValidationErrorCase({"page_number": 1, "page_size": "one"}, 422, "page_size"),
+            ValidationErrorCase(
                 {
                     "page_number": 1,
                     "page_size": test_settings.pagination_max_page_size + 1,
                 },
+                422,
                 "page_size",
             ),
         ],
@@ -128,15 +163,11 @@ class TestPersonList:
     async def test_person_list_invalid_pagination(
         self,
         http_client: aiohttp.ClientSession,
-        query: dict,
-        expected_field: str,
+        case: ValidationErrorCase,
     ):
-        params = "&".join([f"{k}={v}" for k, v in query.items()])
-        url = f"{PERSONS_PATH}/?{params}"
-
-        response = await http_client.get(url)
+        url = f"{PERSONS_PATH}"
+        response = await http_client.get(url, params=case.query)
         body = await assert_status_return_json(response, 422)
-
         assert expected_field in str(body)
 
     async def test_person_list_pagination_different_pages(
