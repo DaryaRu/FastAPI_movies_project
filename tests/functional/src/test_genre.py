@@ -1,13 +1,13 @@
 """Functional tests for /api/v1/genres endpoints."""
 
-from typing import Callable
-
 import pytest
 from aiohttp import ClientSession
 
 from functional.settings import test_settings
 from functional.testdata.genres import GENRES_DATA
-from tests.functional.src.cases import DetailCase, ListCase, SortCase, ValidationErrorCase
+from tests.functional.src.cases import (
+    DetailCase, ListCase, SortCase, ValidationErrorCase
+)
 from tests.functional.utils.check_methods import (
     assert_required_fields,
     assert_status_return_json,
@@ -38,9 +38,9 @@ class TestGenreDetail:
         response = await http_client.get(
             f"{GENRES_URL}/{case.entity_id}"
         )
-        data = await assert_status_return_json(response, case.status_code)      
-        if response.status == 200:                                              
-            assert data["uuid"] == case.expected_uuid                           
+        data = await assert_status_return_json(response, case.status_code)
+        if response.status == 200:
+            assert data["uuid"] == case.expected_uuid
             assert data["name"] == case.expected_name
 
 
@@ -116,11 +116,11 @@ class TestGenreListSorting:
         assert names == case.expected_order
 
     @pytest.mark.parametrize(
-        "case", 
+        "case",
         [
-            ValidationErrorCase({"sort": "id"}, 422), 
-            ValidationErrorCase({"sort": "uuid"}, 422), 
-            ValidationErrorCase({"sort": "invalid_field"}, 422)
+            ValidationErrorCase({"sort": "id"}, 422),
+            ValidationErrorCase({"sort": "uuid"}, 422),
+            ValidationErrorCase({"sort": "invalid_field"}, 422),
         ]
     )
     async def test_invalid_sort_returns_422(
@@ -183,17 +183,20 @@ class TestGenreCache:
             response_second_page, 200
         )
         assert data_first_page != data_second_page
-        
+
     @pytest.mark.parametrize(
         'url_1, url_2',
         [
-            (f"{GENRES_URL}/{GENRES_DATA[0]["id"]}/", f"{GENRES_URL}/{GENRES_DATA[1]["id"]}/"),
+            (
+                f"{GENRES_URL}/{GENRES_DATA[0]['id']}/",
+                f"{GENRES_URL}/{GENRES_DATA[1]['id']}/",
+            ),
             (
                 f"{GENRES_URL}/?page_number=1&page_size=5",
                 f"{GENRES_URL}/?page_number=1&page_size=10"
             ),
         ],
-    )    
+    )
     async def test_person_cache_isolated_by_query(
         self,
         http_client: ClientSession,
