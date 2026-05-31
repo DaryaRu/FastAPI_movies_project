@@ -10,6 +10,7 @@ from functional.testdata.films import (
     TEST_PERSON_ID,
     FILM_DATA_LIST_LENGTH,
 )
+from tests.functional.src.cases import DetailCase, ListCase, ValidationErrorCase, SearchCase, SortCase
 
 
 FILMS_URL = f"{test_settings.api_prefix}/films"
@@ -25,23 +26,21 @@ class TestFilmDetail:
     """Tests for GET /api/v1/films/{film_id}."""
 
     @pytest.mark.parametrize(
-        "query_data,expected_status",
+        "case",
         [
-            ({"film_id": FILMS_DATA[0]["id"]}, 200),
-            ({"film_id": UNKNOWN_UUID}, 404),
-            ({"film_id": INVALID_UUID}, 422),
+            DetailCase(FILMS_DATA[0]["id"], 200),
+            DetailCase(UNKNOWN_UUID, 404),
+            DetailCase(INVALID_UUID, 422),
         ],
     )
     async def test_film_detail(
         self,
         http_client: ClientSession,
-        query_data: dict,
-        expected_status: int,
+        case: DetailCase,
     ):
-        film_id = query_data["film_id"]
-        response = await http_client.get(f"{FILMS_URL}/{film_id}")
+        response = await http_client.get(f"{FILMS_URL}/{case.entity_id}")
 
-        assert response.status == expected_status
+        assert response.status == case.status_code
 
         if response.status == 200:
             data = await response.json()
@@ -101,21 +100,20 @@ class TestFilmDetailValidation:
     """Test UUID validation film detail query data."""
 
     @pytest.mark.parametrize(
-        "query_data,expected_answer",
+        "case",
         [
-            ("true", 422),
-            ("111", 422),
-            ("00000000-0000-0000-0000-00000000000Z", 422),
+            DetailCase("true", 422),
+            DetailCase("111", 422),
+            DetailCase("00000000-0000-0000-0000-00000000000Z", 422),
         ],
     )
     async def test_invalid_uuid_returns_422(
         self,
         http_client: ClientSession,
-        query_data: str,
-        expected_answer: int,
+        case: DetailCase,
     ):
-        response = await http_client.get(f"{FILMS_URL}/{query_data}")
-        assert response.status == expected_answer
+        response = await http_client.get(f"{FILMS_URL}/{case.entity_id}")
+        assert response.status == case.status_code
 
 
 class TestFilmList:
@@ -188,14 +186,16 @@ class TestFilmListSorting:
     """Tests for sort query parameter in films endpoint."""
 
     @pytest.mark.parametrize(
-        "query_data,expected_order",
+        "case",
         [
-            (
+            SortCase(
                 {"sort": "imdb_rating", "page_size": PAGE_SIZE},
+                200,
                 sorted([f["imdb_rating"] for f in FILMS_DATA]),
             ),
-            (
+            SortCase(
                 {"sort": "-imdb_rating", "page_size": PAGE_SIZE},
+                200,
                 sorted([f["imdb_rating"] for f in FILMS_DATA], reverse=True),
             ),
         ],
@@ -203,82 +203,77 @@ class TestFilmListSorting:
     async def test_sort_returns_sorted_film_list(
         self,
         http_client: ClientSession,
-        query_data: dict,
-        expected_order: list,
+        case: SortCase,
     ):
-        response = await http_client.get(FILMS_URL, params=query_data)
-        assert response.status == 200
+        response = await http_client.get(FILMS_URL, params=case.query)
+        assert response.status == case.status_code
         data = await response.json()
         ratings = [f["imdb_rating"] for f in data]
-        assert ratings == expected_order
+        assert ratings == case.expected_order
 
-    @pytest.mark.parametrize("sort", ["id", "description", "invalid_field"])
+    @pytest.mark.parametrize(
+        "case", 
+        [
+            ValidationErrorCase({"sort": "id"}, 422), 
+            ValidationErrorCase({"sort": "description"}, 422), 
+            ValidationErrorCase({"sort": "invalid_field"}, 422)
+        ]
+    )
     async def test_invalid_sort_returns_422(
-        self, http_client: ClientSession, sort: str
+        self, http_client: ClientSession, case: ValidationErrorCase
     ):
-        response = await http_client.get(FILMS_URL, params={"sort": sort})
-        assert response.status == 422
+        response = await http_client.get(FILMS_URL, params=case.query)
+        assert response.status == case.status_code
 
 
 class TestFilmListPaginationValidation:
     """Tests for pagination query parameters."""
 
     @pytest.mark.parametrize(
-        "query_data,expected_answer",
+        "case",
         [
-            ({"page_number": 0}, 422),
-            ({"page_number": -1}, 422),
-            ({"page_size": 0}, 422),
-            ({"page_size": -1}, 422),
-            ({"page_size": 101}, 422),
-            ({"page_size": 1000000}, 422),
-            ({"page_number": "abc"}, 422),
+            ValidationErrorCase({"page_number": 0}, 422),
+            ValidationErrorCase({"page_number": -1}, 422),
+            ValidationErrorCase({"page_size": 0}, 422),
+            ValidationErrorCase({"page_size": -1}, 422),
+            ValidationErrorCase({"page_size": 101}, 422),
+            ValidationErrorCase({"page_size": 1000000}, 422),
+            ValidationErrorCase({"page_number": "abc"}, 422),
         ],
     )
     async def test_invalid_pagination_returns_422(
         self,
         http_client: ClientSession,
-        query_data: dict,
-        expected_answer: int,
+        case: ValidationErrorCase
     ):
-        response = await http_client.get(FILMS_URL, params=query_data)
-        assert response.status == expected_answer
+        response = await http_client.get(FILMS_URL, params=case.query)
+        assert response.status == case.status_code
 
     @pytest.mark.parametrize(
-        "query_data,expected_answer",
+        "case",
         [
-            ({"page_size": 1}, {"status": 200, "count": 1}),
-            (
-                {"page_size": 100},
-                {"status": 200, "count": FILM_DATA_LIST_LENGTH},
-            ),
-            (
-                {},
-                {
-                    "status": 200,
-                    "count": test_settings.pagination_default_page_size,
-                    },
-                    ),
-            ({"page_number": 9999}, {"status": 200, "body": []}),
+            ListCase(query={"page_size": 1}, status_code=200, length=1),
+            ListCase(query={"page_size": 100}, status_code=200, length=FILM_DATA_LIST_LENGTH),
+            ListCase(query={}, status_code=200, length=test_settings.pagination_default_page_size),
+            ListCase(query={"page_number": 9999}, status_code=200, body=[]),
         ]
 
     )
     async def test_valid_pagination_returns_200(
         self,
         http_client: ClientSession,
-        query_data: dict,
-        expected_answer: dict,
+        case: ListCase,
     ):
-        response = await http_client.get(FILMS_URL, params=query_data)
-        assert response.status == expected_answer["status"]
+        response = await http_client.get(FILMS_URL, params=case.query)
+        assert response.status == case.status_code
         data = await response.json()
         assert isinstance(data, list)
 
-        if "count" in expected_answer:
-            assert len(data) == expected_answer["count"]
+        if case.length is not None:
+            assert len(data) <= case.length
 
-        if "body" in expected_answer:
-            assert data == expected_answer["body"]
+        if case.body is not None:
+            assert data == case.body
 
 
 class TestFilmForPerson:
@@ -418,38 +413,58 @@ class TestFilmCache:
             await response_action_genre.json()
             != await response_empty_genre.json()
         )
+        
+    @pytest.mark.parametrize(
+        'url_1, url_2',
+        [
+            (f"{FILMS_URL}/{FILMS_DATA[0]['id']}/", f"{FILMS_URL}/{FILMS_DATA[1]['id']}/"),
+            (f"{FILMS_URL}/search?query=star", f"{FILMS_URL}/search?query=6"),
+            (f"{FILMS_URL}/?page_number=1&page_size=5", f"{FILMS_URL}/?page_number=1&page_size=10"
+            ),
+        ],
+    )    
+    async def test_person_cache_isolated_by_query(
+        self,
+        http_client: ClientSession,
+        url_1: str,
+        url_2: str,
+    ):
+        response_1 = await http_client.get(url_1)
+        assert response_1.headers["X-FastAPI-Cache"] == "MISS"
+
+        response_2 = await http_client.get(url_1)
+        assert response_2.headers["X-FastAPI-Cache"] == "HIT"
+
+        response_3 = await http_client.get(url_2)
+        assert response_3.headers["X-FastAPI-Cache"] == "MISS"
 
 
 class TestFilmSearch:
     """Tests for GET /api/v1/films/search."""
 
     @pytest.mark.parametrize(
-        "query_data,expected_status,expected_length",
+        "case",
         [
-            (
+            SearchCase(
                 {"query": "The Star", "page_size": 100},
                 200,
                 FILM_DATA_LIST_LENGTH,
             ),
-            ({"query": "55"}, 200, 1),
-            ({"query": "NonExistingFilm"}, 200, 0),
+            SearchCase({"query": "5"}, 200, 1),
+            SearchCase({"query": "NonExistingFilm"}, 200, 0),
         ],
     )
     @pytest.mark.asyncio
     async def test_film_search(
         self,
         http_client: ClientSession,
-        query_data: dict,
-        expected_status: int,
-        expected_length: int,
+        case: SearchCase,
     ):
         response = await http_client.get(
-            f"{FILMS_URL}/search", params=query_data
+            f"{FILMS_URL}/search", params=case.query
         )
 
-        assert response.status == expected_status
-
-        if response.status == 200:
-            data = await response.json()
-            assert isinstance(data, list)
-            assert len(data) == expected_length
+        assert response.status == case.status_code
+        data = await response.json()
+        assert isinstance(data, list)
+        assert len(data) == case.length
