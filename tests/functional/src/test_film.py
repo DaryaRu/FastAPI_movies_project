@@ -11,6 +11,9 @@ from functional.testdata.films import (
     FILM_DATA_LIST_LENGTH,
 )
 from tests.functional.src.cases import DetailCase, ListCase, ValidationErrorCase, SearchCase, SortCase
+from tests.functional.utils.check_methods import (
+    assert_required_fields, assert_status_return_json
+)
 
 
 FILMS_URL = f"{test_settings.api_prefix}/films"
@@ -39,11 +42,8 @@ class TestFilmDetail:
         case: DetailCase,
     ):
         response = await http_client.get(f"{FILMS_URL}/{case.entity_id}")
-
-        assert response.status == case.status_code
-
+        data = await assert_status_return_json(response, case.status_code)
         if response.status == 200:
-            data = await response.json()
             expected_fields = {
                 "uuid",
                 "title",
@@ -55,10 +55,7 @@ class TestFilmDetail:
                 "writers",
                 "genre",
             }
-            assert expected_fields.issubset(data.keys()), (
-                f"Missing fields: {expected_fields - data.keys()}"
-            )
-
+            assert_required_fields(data, expected_fields)
             assert isinstance(data["title"], str)
             assert (
                 isinstance(data["imdb_rating"], (float, int))
@@ -92,7 +89,6 @@ class TestFilmDetail:
             assert isinstance(data["writers"], list)
 
         elif response.status == 404:
-            data = await response.json()
             assert data == ERR_FILM_NOT_FOUND
 
 
@@ -127,24 +123,19 @@ class TestFilmList:
         response = await http_client.get(
             FILMS_URL, params={"page_size": PAGE_SIZE}
         )
-        data = await response.json()
+        data = await assert_status_return_json(response, 200)
         assert isinstance(data, list)
         assert len(data) == len(FILMS_DATA)
 
     async def test_films_list_film_info(self, http_client: ClientSession):
         response = await http_client.get(FILMS_URL)
-        assert response.status == 200
-        data = await response.json()
-
+        data = await assert_status_return_json(response, 200)
         assert isinstance(data, list)
         assert len(data) > 0
 
         first_film = data[0]
-
         expected_fields = {"uuid", "title", "imdb_rating"}
-        assert expected_fields.issubset(first_film.keys()), (
-            f"Missing fields: {expected_fields - first_film.keys()}"
-        )
+        assert_required_fields(first_film, expected_fields)
 
         assert isinstance(first_film["title"], str)
         assert (
@@ -152,9 +143,9 @@ class TestFilmList:
             or first_film["imdb_rating"] is None
         )
 
-        from functional.fixtures.films import FILMS_DATA
-
-        expected_film = FILMS_DATA[0]
+        title_str = first_film.get("title", "")
+        position = int(title_str.replace("The Star Part", "").strip())
+        expected_film = FILMS_DATA[position]
 
         assert first_film["uuid"] == expected_film["id"]
         assert first_film["title"] == expected_film["title"]
@@ -167,9 +158,8 @@ class TestFilmList:
             FILMS_URL,
             params={"filter[genre]": TEST_GENRE_ID, "page_size": PAGE_SIZE},
         )
-        assert response.status == 200
+        data = await assert_status_return_json(response, 200)
 
-        data = await response.json()
         assert isinstance(data, list)
         assert len(data) == len(FILMS_DATA)
 
@@ -206,8 +196,7 @@ class TestFilmListSorting:
         case: SortCase,
     ):
         response = await http_client.get(FILMS_URL, params=case.query)
-        assert response.status == case.status_code
-        data = await response.json()
+        data = await assert_status_return_json(response, case.status_code)
         ratings = [f["imdb_rating"] for f in data]
         assert ratings == case.expected_order
 
@@ -265,8 +254,7 @@ class TestFilmListPaginationValidation:
         case: ListCase,
     ):
         response = await http_client.get(FILMS_URL, params=case.query)
-        assert response.status == case.status_code
-        data = await response.json()
+        data = await assert_status_return_json(response, case.status_code)
         assert isinstance(data, list)
 
         if case.length is not None:
@@ -292,8 +280,7 @@ class TestFilmForPerson:
         response = await http_client.get(
             PERSON_FILMS_URL, params={"page_size": FILM_DATA_LIST_LENGTH}
         )
-        assert response.status == 200
-        data = await response.json()
+        data = await assert_status_return_json(response, 200)
         assert isinstance(data, list)
         assert len(data) == len(FILMS_DATA)
 
@@ -303,15 +290,12 @@ class TestFilmForPerson:
         response = await http_client.get(
             PERSON_FILMS_URL, params={"page_size": 1}
         )
-        assert response.status == 200
-        data = await response.json()
+        data = await assert_status_return_json(response, 200)
         assert len(data) > 0
         film = data[0]
 
         expected_fields = {"uuid", "title", "imdb_rating"}
-        assert expected_fields.issubset(film.keys()), (
-            f"Missing fields: {expected_fields - film.keys()}"
-        )
+        assert_required_fields(film, expected_fields)
 
         assert isinstance(film["title"], str)
         assert (
@@ -319,15 +303,18 @@ class TestFilmForPerson:
             or film["imdb_rating"] is None
         )
 
-        assert film["uuid"] in FILMS_DATA[0]['id']
+        title_str = film.get("title", "")
+        position = int(title_str.replace("The Star Part", "").strip())
+
+        expected_film = FILMS_DATA[position]
+        assert film["uuid"] == expected_film["id"]
 
     async def test_unknown_person_returns_404(
         self, http_client: ClientSession
     ):
         url = f"{test_settings.api_prefix}/persons/{UNKNOWN_UUID}/film"
         response = await http_client.get(url)
-        assert response.status == 404
-        data = await response.json()
+        data = await assert_status_return_json(response, 404)
         assert data == ERR_PERSON_NOT_FOUND
 
     async def test_invalid_person_uuid_returns_422(
@@ -463,8 +450,6 @@ class TestFilmSearch:
         response = await http_client.get(
             f"{FILMS_URL}/search", params=case.query
         )
-
-        assert response.status == case.status_code
-        data = await response.json()
+        data = await assert_status_return_json(response, case.status_code)
         assert isinstance(data, list)
         assert len(data) == case.length

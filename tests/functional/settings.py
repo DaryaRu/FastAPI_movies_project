@@ -26,6 +26,13 @@ class TestSettings(BaseSettings):
 
     api_url: str = Field(default="http://localhost:7000", alias="API_URL")
     api_prefix: str = Field(default="/api/v1", alias="API_PREFIX")
+
+    service_wait_max_attempts: int = Field(
+        default=30, alias="SERVICE_WAIT_MAX_ATTEMPTS"
+    )
+    service_wait_delay: float = Field(
+        default=1.0, alias="SERVICE_WAIT_DELAY"
+    )
     pagination_default_page_size: int = Field(
         alias="PAGINATION_DEFAULT_PAGE_SIZE"
     )

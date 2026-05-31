@@ -4,6 +4,9 @@ import pytest
 
 from functional.settings import test_settings
 from tests.functional.src.cases import SearchCase, ValidationErrorCase
+from tests.functional.utils.check_methods import (
+    assert_status_return_json,
+)
 
 PERSONS_PATH = f"{test_settings.api_prefix}/persons"
 
@@ -28,8 +31,7 @@ class TestPersonSearch:
     ) -> None:
         url = f'{PERSONS_PATH}/search'
         response = await http_client.get(url, params=case.query)
-        body = await response.json()
-        assert response.status == case.status_code
+        body = await assert_status_return_json(response, case.status_code)
         assert len(body) == case.length
 
 
@@ -45,8 +47,7 @@ class TestPersonDetails:
         url = f"{PERSONS_PATH}/{person_id}/"
 
         response = await http_client.get(url)
-        body = await response.json()
-        assert response.status == 200
+        body = await assert_status_return_json(response, 200)
         assert body["uuid"] == person_id
         assert body["full_name"] == person["name"]
         assert len(body["films"]) == len(person["films"])
@@ -60,9 +61,8 @@ class TestPersonDetails:
         url = f"{PERSONS_PATH}/{fake_uuid}/"
 
         response = await http_client.get(url)
-        body = await response.json()
+        body = await assert_status_return_json(response, 404)
 
-        assert response.status == 404
         assert body["detail"] == "person not found"
 
     async def test_person_details_invalid_uuid(
@@ -166,12 +166,9 @@ class TestPersonList:
         case: ValidationErrorCase,
     ):
         url = f"{PERSONS_PATH}"
-
         response = await http_client.get(url, params=case.query)
-        body = await response.json()
-
-        assert response.status == case.status_code
-        assert case.expected_field in str(body)
+        body = await assert_status_return_json(response, 422)
+        assert expected_field in str(body)
 
     async def test_person_list_pagination_different_pages(
         self,
@@ -181,13 +178,11 @@ class TestPersonList:
         url2 = f"{PERSONS_PATH}/?page_number=2&page_size=5"
 
         response_1 = await http_client.get(url1)
-        body_1 = await response_1.json()
 
         response_2 = await http_client.get(url2)
-        body_2 = await response_2.json()
 
-        assert response_1.status == 200
-        assert response_2.status == 200
+        body_1 = await assert_status_return_json(response_1, 200)
+        body_2 = await assert_status_return_json(response_2, 200)
         assert body_1 != body_2
 
     async def test_person_list_page_size(
@@ -197,9 +192,7 @@ class TestPersonList:
         url = f"{PERSONS_PATH}/?page_size=5&page_number=1"
 
         response = await http_client.get(url)
-        body = await response.json()
-
-        assert response.status == 200
+        body = await assert_status_return_json(response, 200)
         assert len(body) == 5
 
     async def test_person_list_ok(
@@ -209,7 +202,5 @@ class TestPersonList:
         url = f"{PERSONS_PATH}/"
 
         response = await http_client.get(url)
-        body = await response.json()
-
-        assert response.status == 200
+        body = await assert_status_return_json(response, 200)
         assert len(body) <= test_settings.pagination_default_page_size

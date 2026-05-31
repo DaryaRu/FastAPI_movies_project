@@ -8,6 +8,10 @@ from aiohttp import ClientSession
 from functional.settings import test_settings
 from functional.testdata.genres import GENRES_DATA
 from tests.functional.src.cases import DetailCase, ListCase, SortCase, ValidationErrorCase
+from tests.functional.utils.check_methods import (
+    assert_required_fields,
+    assert_status_return_json,
+)
 
 
 GENRES_URL = f"{test_settings.api_prefix}/genres"
@@ -34,10 +38,9 @@ class TestGenreDetail:
         response = await http_client.get(
             f"{GENRES_URL}/{case.entity_id}"
         )
-        assert response.status == case.status_code
-        if response.status == 200:
-            data = await response.json()
-            assert data["uuid"] == case.expected_uuid
+        data = await assert_status_return_json(response, case.status_code)      
+        if response.status == 200:                                              
+            assert data["uuid"] == case.expected_uuid                           
             assert data["name"] == case.expected_name
 
 
@@ -70,8 +73,7 @@ class TestGenreList:
 
     async def test_returns_all_genres(self, http_client: ClientSession):
         response = await http_client.get(GENRES_URL)
-        assert response.status == 200
-        data = await response.json()
+        data = await assert_status_return_json(response, 200)
         assert isinstance(data, list)
         assert len(data) == len(GENRES_DATA)
 
@@ -79,13 +81,10 @@ class TestGenreList:
         self, http_client: ClientSession
     ):
         response = await http_client.get(GENRES_URL)
-        assert response.status == 200
-        data = await response.json()
+        data = await assert_status_return_json(response, 200)
         genre = data[0]
         expected_fields = {"uuid", "name"}
-        assert expected_fields.issubset(genre.keys()), (
-            f"Missing fields: {expected_fields - genre.keys()}"
-        )
+        assert_required_fields(genre, expected_fields)
 
 
 class TestGenreListSorting:
@@ -112,8 +111,7 @@ class TestGenreListSorting:
         case: SortCase,
     ):
         response = await http_client.get(GENRES_URL, params=case.query)
-        assert response.status == case.status_code
-        data = await response.json()
+        data = await assert_status_return_json(response, case.status_code)
         names = [g["name"] for g in data]
         assert names == case.expected_order
 
@@ -178,12 +176,13 @@ class TestGenreCache:
         response_second_page = await http_client.get(
             GENRES_URL, params={"page_size": 1, "page_number": 2}
         )
-        assert response_first_page.status == 200
-        assert response_second_page.status == 200
-        assert (
-            await response_first_page.json()
-            != await response_second_page.json()
+        data_first_page = await assert_status_return_json(
+            response_first_page, 200
         )
+        data_second_page = await assert_status_return_json(
+            response_second_page, 200
+        )
+        assert data_first_page != data_second_page
         
     @pytest.mark.parametrize(
         'url_1, url_2',
@@ -249,10 +248,7 @@ class TestGenreListPaginationValidation:
         case: ListCase,
     ):
         response = await http_client.get(GENRES_URL, params=case.query)
-        assert response.status == case.status_code
-        if case.length is None or case.body is None:
-            return
-        data = await response.json()
+        data = await assert_status_return_json(response, case.status_code)
         if case.length is not None:
             assert len(data) == case.length
         if case.body is not None:
