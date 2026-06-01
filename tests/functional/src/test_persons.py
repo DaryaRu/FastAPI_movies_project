@@ -35,6 +35,64 @@ class TestPersonSearch:
         body = await assert_status_return_json(response, case.status_code)
         assert len(body) == case.length
 
+    @pytest.mark.parametrize(
+        "case",
+        [
+            SearchCase("tom", 200, 3),
+            SearchCase("TOM", 200, 3),
+            SearchCase("Tom", 200, 3),
+            SearchCase("tOm", 200, 3),
+            SearchCase("emma", 200, 2),
+            SearchCase("EMMA", 200, 2),
+            SearchCase("Emma", 200, 2),
+        ]
+    )
+    @pytest.mark.asyncio
+    async def test_person_search_case_insensitive(
+        self,
+        http_client: aiohttp.ClientSession,
+        case: SearchCase,
+    ) -> None:
+        response = await http_client.get(
+            f"{PERSONS_PATH}/search",
+            params={"query": case.query, "page_size": 100}
+        )
+        data = await assert_status_return_json(response, case.status_code)
+        assert isinstance(data, list)
+        assert len(data) >= case.length
+
+    @pytest.mark.parametrize(
+        "case",
+        [
+            ValidationErrorCase({}, 422),
+            ValidationErrorCase({"page_size": 10}, 422),
+            ValidationErrorCase({"page_number": 1}, 422),
+
+            ValidationErrorCase({"query": "Tom", "page_size": 0}, 422),
+            ValidationErrorCase({"query": "Tom", "page_size": -1}, 422),
+            ValidationErrorCase({"query": "Tom", "page_size": 10001}, 422),
+
+            ValidationErrorCase({"query": "Tom", "page_number": 0}, 422),
+            ValidationErrorCase({"query": "Tom", "page_number": -1}, 422),
+
+            ValidationErrorCase({"query": "Tom", "page_size": "string"}, 422),
+            ValidationErrorCase(
+                {"query": "Tom", "page_number": "string"}, 422
+                ),
+        ],
+    )
+    @pytest.mark.asyncio
+    async def test_person_search_ng(
+        self,
+        http_client: aiohttp.ClientSession,
+        case: ValidationErrorCase,
+    ) -> None:
+        response = await http_client.get(
+            f"{PERSONS_PATH}/search", params=case.query
+        )
+
+        await assert_status_return_json(response, case.status_code)
+
 
 class TestPersonDetails:
     async def test_person_details_ok(
