@@ -132,19 +132,40 @@ etl/
 
 Функциональные тесты находятся в `tests/functional/`.
 
-### Подготовка (один раз)
+### Подготовка
+
+Скопировать файл с переменными окружения:
+```bash
+cp tests/functional/.env.example tests/functional/.env
+```
+
+### Запуск через Makefile (рекомендуется)
+
+```bash
+# все тесты
+make test-functional
+
+# только тесты с пустым Elasticsearch
+make test-functional-empty
+```
+
+Контейнеры автоматически останавливаются и удаляются после завершения или при падении тестов.
+
+### Ручной запуск
+
+#### Подготовка образа
 
 ```bash
 cd tests/functional && docker compose build
 ```
 
-### Запуск инфраструктуры
+#### Запуск инфраструктуры
 
 ```bash
 docker compose up -d elasticsearch redis fastapi
 ```
 
-### Без дебаггера
+#### Без дебаггера
 
 ```bash
 docker compose run --rm tests
@@ -152,7 +173,7 @@ docker compose run --rm tests
 
 При изменении тестов пересборка образа не нужна — директория `tests/` примонтирована как volume и изменения подхватываются при следующем запуске.
 
-### С дебаггером (VS Code)
+#### С дебаггером (VS Code)
 
 **1.** Запустить тесты в режиме ожидания:
 ```bash
@@ -163,7 +184,7 @@ docker compose run --rm --service-ports -e DEBUG=1 tests
 
 **3.** Подключиться к `localhost:5678` через debugpy в своей IDE.
 
-### Остановить инфраструктуру
+#### Остановить инфраструктуру
 
 ```bash
 docker compose down
