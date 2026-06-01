@@ -10,11 +10,11 @@ from functional.testdata.films import (
     TEST_PERSON_ID,
     FILM_DATA_LIST_LENGTH,
 )
-from tests.functional.src.cases import (DetailCase, ListCase,
-                                        ValidationErrorCase,
-                                        SearchCase, SortCase)
+from tests.functional.src.cases import (
+    DetailCase, ListCase, ValidationErrorCase, SearchCase, SortCase
+)
 from tests.functional.utils.check_methods import (
-    assert_required_fields, assert_status_return_json
+    assert_cache_isolated, assert_required_fields, assert_status_return_json
 )
 
 
@@ -207,7 +207,7 @@ class TestFilmListSorting:
         [
             ValidationErrorCase({"sort": "id"}, 422),
             ValidationErrorCase({"sort": "description"}, 422),
-            ValidationErrorCase({"sort": "invalid_field"}, 422)
+            ValidationErrorCase({"sort": "invalid_field"}, 422),
         ]
     )
     async def test_invalid_sort_returns_422(
@@ -417,30 +417,20 @@ class TestFilmCache:
                 f"{FILMS_URL}/{FILMS_DATA[0]['id']}/",
                 f"{FILMS_URL}/{FILMS_DATA[1]['id']}/",
             ),
-            (
-                f"{FILMS_URL}/search?query=star",
-                f"{FILMS_URL}/search?query=6",
-            ),
+            (f"{FILMS_URL}/search?query=star", f"{FILMS_URL}/search?query=6"),
             (
                 f"{FILMS_URL}/?page_number=1&page_size=5",
                 f"{FILMS_URL}/?page_number=1&page_size=10",
             ),
         ],
     )
-    async def test_person_cache_isolated_by_query(
+    async def test_cache_isolated_by_query(
         self,
         http_client: ClientSession,
         url_1: str,
         url_2: str,
     ):
-        response_1 = await http_client.get(url_1)
-        assert response_1.headers["X-FastAPI-Cache"] == "MISS"
-
-        response_2 = await http_client.get(url_1)
-        assert response_2.headers["X-FastAPI-Cache"] == "HIT"
-
-        response_3 = await http_client.get(url_2)
-        assert response_3.headers["X-FastAPI-Cache"] == "MISS"
+        await assert_cache_isolated(http_client, url_1, url_2)
 
 
 class TestFilmSearch:

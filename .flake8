@@ -1,5 +1,6 @@
 [flake8]
 exclude =
+    .git,
     .venv,
     venv
 max-line-length = 79
