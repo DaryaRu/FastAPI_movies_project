@@ -23,7 +23,9 @@ def get_roles() -> Callable[[int], list[str]]:
 
 
 @pytest.fixture(scope='session')
-def person_data(film_data: list[dict], get_roles: Callable[[int], list[str]]) -> list[dict]:
+def person_data(
+    film_data: list[dict], get_roles: Callable[[int], list[str]]
+) -> list[dict]:
     person_ids = [
         "5db9d84f-1a48-4637-8c5c-29f82f59f5d5",
         "7fefb90b-5a1a-4f68-9c1c-0d8c37b3d7e9",
