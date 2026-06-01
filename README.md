@@ -69,6 +69,11 @@ src/
 
 Все эндпоинты кэшируются через `fastapi-cache2` с Redis-бэкендом. Декоратор `@cache` стоит на уровне роутера. TTL задаётся переменной окружения `CACHE_EXPIRE`. Наличие кэша в ответе можно проверить по заголовку `X-FastAPI-Cache: HIT/MISS`.
 
+### Устойчивость к сбоям
+
+- **Elasticsearch недоступен** — все эндпоинты возвращают `503 Service Unavailable` с телом `{"detail": "search service unavailable"}`. Перед возвратом 503 репозиторий делает 3 попытки с экспоненциальным backoff.
+- **Redis недоступен** — API продолжает работать без кэша. `FaultTolerantRedisBackend` перехватывает `ConnectionError` при чтении и записи: промах кэша обрабатывается как обычный запрос к Elasticsearch, результат не кэшируется.
+
 ### Модели и схемы
 
 В проекте два слоя моделей:
@@ -130,7 +135,9 @@ etl/
 
 ## Тесты
 
-Функциональные тесты находятся в `tests/functional/`.
+Тесты разделены на два типа:
+- `tests/functional/` — функциональные тесты (требуют запущенных ES, Redis, API)
+- `tests/resilience/` — тесты отказоустойчивости (без реального ES и Redis)
 
 ### Подготовка
 
@@ -142,14 +149,28 @@ cp tests/functional/.env.example tests/functional/.env
 ### Запуск через Makefile (рекомендуется)
 
 ```bash
-# все тесты
-make test-functional
-
-# только тесты с пустым Elasticsearch
-make test-functional-empty
+make test-functional        # функциональные тесты (ES + Redis + FastAPI в docker)
+make test-functional-empty  # тесты с пустым Elasticsearch
+make test-resilience        # тесты отказоустойчивости (без реального ES/Redis)
+make test-all               # все
 ```
 
-Контейнеры автоматически останавливаются и удаляются после завершения или при падении тестов.
+Для `test-functional` и `test-functional-empty` контейнеры автоматически останавливаются и удаляются после завершения или при падении тестов. `test-resilience` контейнеры не поднимает — приложение запускается внутри pytest.
+
+### Тесты отказоустойчивости
+
+Находятся в `tests/resilience/`. Проверяют поведение API при недоступных внешних сервисах:
+
+- `TestESUnavailable` — все list- и detail-эндпоинты возвращают 503
+- `TestRedisUnavailable` — API возвращает 200, работая без кэша
+
+Тесты запускаются без реального ES и Redis: приложение поднимается через `httpx.ASGITransport` внутри pytest, а клиенты мокируются на уровне методов.
+
+Для локального запуска нужно установить зависимости из `src/requirements.txt` и `tests/resilience/requirements.txt`:
+```bash
+pip install -r src/requirements.txt -r tests/resilience/requirements.txt
+pytest tests/resilience/ -v -c tests/resilience/pytest.ini
+```
 
 ### Ручной запуск
 
