@@ -14,7 +14,7 @@ from tests.functional.src.cases import (
     DetailCase, ListCase, ValidationErrorCase, SearchCase, SortCase
 )
 from tests.functional.utils.check_methods import (
-    assert_required_fields, assert_status_return_json
+    assert_cache_isolated, assert_required_fields, assert_status_return_json
 )
 
 
@@ -425,20 +425,13 @@ class TestFilmCache:
             ),
         ],
     )
-    async def test_person_cache_isolated_by_query(
+    async def test_cache_isolated_by_query(
         self,
         http_client: ClientSession,
         url_1: str,
         url_2: str,
     ):
-        response_1 = await http_client.get(url_1)
-        assert response_1.headers["X-FastAPI-Cache"] == "MISS"
-
-        response_2 = await http_client.get(url_1)
-        assert response_2.headers["X-FastAPI-Cache"] == "HIT"
-
-        response_3 = await http_client.get(url_2)
-        assert response_3.headers["X-FastAPI-Cache"] == "MISS"
+        await assert_cache_isolated(http_client, url_1, url_2)
 
 
 class TestFilmSearch:

@@ -5,6 +5,7 @@ import pytest
 from functional.settings import test_settings
 from tests.functional.src.cases import SearchCase, ValidationErrorCase
 from tests.functional.utils.check_methods import (
+    assert_cache_isolated,
     assert_status_return_json,
 )
 
@@ -123,27 +124,16 @@ class TestPersonCache:
             ),
         ],
     )
-    async def test_person_cache_isolated_by_query(
+    async def test_cache_isolated_by_query(
         self,
         http_client: aiohttp.ClientSession,
         person_data: list[dict],
         get_url_1: Callable[[str], str],
         get_url_2: Callable[[str], str],
     ):
-        person_id_1 = person_data[0]["id"]
-        url_1 = get_url_1(person_id_1)
-
-        person_id_2 = person_data[1]["id"]
-        url_2 = get_url_2(person_id_2)
-
-        response_1 = await http_client.get(url_1)
-        assert response_1.headers["X-FastAPI-Cache"] == "MISS"
-
-        response_2 = await http_client.get(url_1)
-        assert response_2.headers["X-FastAPI-Cache"] == "HIT"
-
-        response_3 = await http_client.get(url_2)
-        assert response_3.headers["X-FastAPI-Cache"] == "MISS"
+        url_1 = get_url_1(person_data[0]["id"])
+        url_2 = get_url_2(person_data[1]["id"])
+        await assert_cache_isolated(http_client, url_1, url_2)
 
 
 class TestPersonList:
