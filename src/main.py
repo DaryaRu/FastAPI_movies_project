@@ -6,13 +6,14 @@ from logging import config as logging_config
 from typing import Any, Callable, Dict, Optional, Tuple
 from urllib.parse import parse_qsl, urlencode, urlparse
 
+from elastic_transport import ConnectionError as ESConnectionError
 from elasticsearch import AsyncElasticsearch
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import ORJSONResponse
 from fastapi_cache import FastAPICache
-from fastapi_cache.backends.redis import RedisBackend
+from db.redis import FaultTolerantRedisBackend
 from redis.asyncio import Redis
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
@@ -46,7 +47,7 @@ def key_builder(
 async def lifespan(app: FastAPI):
     redis.redis = Redis(host=config.REDIS_HOST, port=config.REDIS_PORT)
     FastAPICache.init(
-        RedisBackend(redis.redis),
+        FaultTolerantRedisBackend(redis.redis),
         prefix="fastapi-cache",
         key_builder=key_builder,
     )
@@ -103,6 +104,14 @@ app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=config.ALLOW_HOSTS)
 app.include_router(films.router, prefix="/api/v1/films", tags=["films"])
 app.include_router(genres.router, prefix="/api/v1/genres", tags=["genres"])
 app.include_router(persons.router, prefix="/api/v1/persons", tags=["persons"])
+
+
+@app.exception_handler(ESConnectionError)
+async def es_unavailable_handler(request: Request, exc: ESConnectionError):
+    return ORJSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content={"detail": "search service unavailable"},
+    )
 
 
 @app.get("/health", tags=["health"])
